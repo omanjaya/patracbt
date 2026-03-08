@@ -1,0 +1,44 @@
+/* Override Tabler primary color → Indigo */
+:root {
+  --tblr-primary: #4f46e5;
+  --tblr-primary-rgb: 79, 70, 229;
+  --tblr-primary-fg: #fff;
+  --tblr-primary-darken: #4338ca;
+  --tblr-primary-lt: #eef2ff;
+  --tblr-primary-lt-rgb: 238, 242, 255;
+  --tblr-link-color: #4f46e5;
+  --tblr-link-hover-color: #4338ca;
+  --tblr-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --tblr-illustrations-primary: #4f46e5;
+  --tblr-illustrations-primary-light: #818cf8;
+}
+
+/* Screen reader only - for accessible labels */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus-visible styles for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--tblr-primary);
+  outline-offset: 2px;
+}
+
+/* Route progress bar */
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: var(--tblr-primary);
+  z-index: 9999;
+  transition: width 0.3s ease;
+}

@@ -1,0 +1,57 @@
+# =============================================================
+# CBT Patra - Production Multi-Stage Dockerfile
+# Build: docker build -f docker/Dockerfile.prod -t cbt-patra .
+# =============================================================
+
+# ─── Stage 1: Frontend Build ─────────────────────────────────
+FROM node:20-alpine AS frontend
+
+WORKDIR /app/web
+
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --production=false
+
+COPY web/ .
+RUN npm run build
+
+# ─── Stage 2: Go Backend Build ───────────────────────────────
+FROM golang:1.25-alpine AS backend
+
+RUN apk add --no-cache git gcc musl-dev
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w" \
+    -o server \
+    ./cmd/server
+
+# ─── Stage 3: Final Minimal Image ───────────────────────────
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates tzdata postgresql16-client && \
+    addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+COPY --from=backend /app/server .
+COPY --from=frontend /app/web/dist ./web/dist
+COPY --from=backend /app/migrations ./migrations
+
+RUN mkdir -p ./uploads/audio ./backups && \
+    chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost:8080/api/health || exit 1
+
+CMD ["./server"]

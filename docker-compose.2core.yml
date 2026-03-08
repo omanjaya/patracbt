@@ -1,0 +1,150 @@
+# =============================================================
+# CBT Patra - Docker Compose Optimized for 2-Core / 8GB RAM
+# Jalankan: docker compose -f docker-compose.2core.yml up -d
+# =============================================================
+
+services:
+  # --- PostgreSQL (tuned: ~4GB allocated) ---
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c max_connections=50
+      -c shared_buffers=1GB
+      -c effective_cache_size=3GB
+      -c work_mem=8MB
+      -c maintenance_work_mem=128MB
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c max_wal_size=1GB
+      -c min_wal_size=256MB
+      -c log_min_duration_statement=500
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 4G
+        reservations:
+          cpus: '0.25'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - internal
+
+  # --- Redis (tuned: 512MB max) ---
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+      --tcp-backlog 128
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redisdata:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 768M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  # --- App (Go + Vue dist) ---
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      GOMAXPROCS: "2"
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - uploads:/app/uploads
+      - backups:/app/backups
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - internal
+      - web
+
+  # --- Caddy Reverse Proxy (Optional HTTPS) ---
+  # Uncomment block di bawah jika butuh auto-HTTPS via Caddy.
+  # Buat file Caddyfile di root project terlebih dahulu.
+  #
+  # caddy:
+  #   image: caddy:2-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #     - "443:443/udp"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.25'
+  #         memory: 256M
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - web
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  backups:
+  # caddy_data:
+  # caddy_config:
+
+networks:
+  internal:
+    driver: bridge
+  web:
+    driver: bridge
