@@ -160,6 +160,10 @@ func main() {
 	seedSettings(settingRepo)
 	seedPermissions(db)
 
+	// Seed master data (roles, rombels, subjects, rooms, tags, dummy users)
+	seedMasterData(db)
+	seedRolePermissions(db)
+
 	// Start server
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.App.Port),
@@ -337,18 +341,24 @@ func seedPermissions(db *gorm.DB) {
 		{"user-view-trash", "Manajemen User"},
 		{"user-restore", "Manajemen User"},
 		{"user-force-delete", "Manajemen User"},
+		{"user-assign-role", "Manajemen User"},
+		{"user-tag-assign", "Manajemen User"},
 
-		// Manajemen Rombel
-		{"rombel-list", "Manajemen Rombel"},
-		{"rombel-create", "Manajemen Rombel"},
-		{"rombel-edit", "Manajemen Rombel"},
-		{"rombel-delete", "Manajemen Rombel"},
-
-		// Manajemen Mapel
-		{"subject-list", "Manajemen Mapel"},
-		{"subject-create", "Manajemen Mapel"},
-		{"subject-edit", "Manajemen Mapel"},
-		{"subject-delete", "Manajemen Mapel"},
+		// Manajemen Master
+		{"rombel-list", "Manajemen Master"},
+		{"rombel-create", "Manajemen Master"},
+		{"rombel-edit", "Manajemen Master"},
+		{"rombel-delete", "Manajemen Master"},
+		{"rombel-assign", "Manajemen Master"},
+		{"subject-list", "Manajemen Master"},
+		{"subject-create", "Manajemen Master"},
+		{"subject-edit", "Manajemen Master"},
+		{"subject-delete", "Manajemen Master"},
+		{"room-list", "Manajemen Master"},
+		{"room-create", "Manajemen Master"},
+		{"room-edit", "Manajemen Master"},
+		{"room-delete", "Manajemen Master"},
+		{"room-assign", "Manajemen Master"},
 
 		// Manajemen Tag
 		{"tag-list", "Manajemen Tag"},
@@ -356,33 +366,33 @@ func seedPermissions(db *gorm.DB) {
 		{"tag-edit", "Manajemen Tag"},
 		{"tag-delete", "Manajemen Tag"},
 
-		// Manajemen Ruangan
-		{"room-list", "Manajemen Ruangan"},
-		{"room-create", "Manajemen Ruangan"},
-		{"room-edit", "Manajemen Ruangan"},
-		{"room-delete", "Manajemen Ruangan"},
+		// Manajemen Role
+		{"role-list", "Manajemen Role"},
+		{"role-edit", "Manajemen Role"},
+		{"permission-list", "Manajemen Role"},
+		{"permission-create", "Manajemen Role"},
+		{"permission-edit", "Manajemen Role"},
+		{"permission-delete", "Manajemen Role"},
+		{"role-create", "Manajemen Role"},
+		{"role-delete", "Manajemen Role"},
 
-		// Manajemen Permission & Role
-		{"permission-list", "Manajemen Permission"},
-		{"permission-create", "Manajemen Permission"},
-		{"permission-edit", "Manajemen Permission"},
-		{"permission-delete", "Manajemen Permission"},
-		{"role-list", "Manajemen Permission"},
-		{"role-create", "Manajemen Permission"},
-		{"role-edit", "Manajemen Permission"},
-		{"role-delete", "Manajemen Permission"},
-
-		// Manajemen Bank Soal
-		{"question-bank-list", "Manajemen Bank Soal"},
-		{"question-bank-create", "Manajemen Bank Soal"},
-		{"question-bank-edit", "Manajemen Bank Soal"},
-		{"question-bank-delete", "Manajemen Bank Soal"},
-
-		// Manajemen Jadwal
-		{"exam-schedule-list", "Manajemen Jadwal"},
-		{"exam-schedule-create", "Manajemen Jadwal"},
-		{"exam-schedule-edit", "Manajemen Jadwal"},
-		{"exam-schedule-delete", "Manajemen Jadwal"},
+		// Manajemen Ujian
+		{"question-bank-list", "Manajemen Ujian"},
+		{"question-bank-create", "Manajemen Ujian"},
+		{"question-bank-edit", "Manajemen Ujian"},
+		{"question-bank-delete", "Manajemen Ujian"},
+		{"question-list", "Manajemen Ujian"},
+		{"question-create", "Manajemen Ujian"},
+		{"question-edit", "Manajemen Ujian"},
+		{"question-delete", "Manajemen Ujian"},
+		{"exam-schedule-list", "Manajemen Ujian"},
+		{"exam-schedule-create", "Manajemen Ujian"},
+		{"exam-schedule-edit", "Manajemen Ujian"},
+		{"exam-schedule-delete", "Manajemen Ujian"},
+		{"exam-schedule-view-trash", "Manajemen Ujian"},
+		{"exam-schedule-restore", "Manajemen Ujian"},
+		{"exam-schedule-force-delete", "Manajemen Ujian"},
+		{"global-supervision", "Manajemen Ujian"},
 
 		// Laporan
 		{"report-view", "Laporan"},

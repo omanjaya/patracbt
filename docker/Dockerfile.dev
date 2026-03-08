@@ -1,8 +1,9 @@
 # Go Development Image dengan Air (hot reload)
 FROM golang:1.26-alpine
 
-# Install Air untuk hot reload
-RUN go install github.com/air-verse/air@latest
+# Install Air untuk hot reload + postgresql-client untuk pg_dump/pg_restore
+RUN apk add --no-cache postgresql-client && \
+    go install github.com/air-verse/air@latest
 
 WORKDIR /app
 

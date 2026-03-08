@@ -5,6 +5,8 @@
 # Build output
 /cbt-patra
 /cli
+/server
+/backups/
 /web/dist/
 
 # Environment
