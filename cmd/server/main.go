@@ -64,9 +64,13 @@ func main() {
 	// Database
 	db := postgres.NewDB(cfg)
 
-	// Auto-migrate (dev only)
+	// Database migrations
 	if cfg.App.Env == "development" {
-		runMigrations(db)
+		// Dev: GORM AutoMigrate (auto-create/alter tables from struct definitions)
+		runAutoMigrate(db)
+	} else {
+		// Production: versioned SQL migrations (safe, trackable, reversible)
+		runSQLMigrations(db, cfg)
 	}
 
 	// Redis
@@ -215,8 +219,8 @@ func main() {
 	logger.Log.Info("Server exited cleanly")
 }
 
-func runMigrations(db *gorm.DB) {
-	logger.Log.Info("Running auto-migrations...")
+func runAutoMigrate(db *gorm.DB) {
+	logger.Log.Info("Running GORM auto-migrations (dev only)...")
 	err := db.AutoMigrate(
 		&entity.User{},
 		&entity.UserProfile{},
