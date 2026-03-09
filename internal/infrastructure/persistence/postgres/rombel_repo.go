@@ -32,18 +32,28 @@ func (r *RombelRepo) Delete(id uint) error {
 		Update("deleted_at", gorm.Expr("NOW()")).Error
 }
 
-func (r *RombelRepo) List(search string, p pagination.Params) ([]*entity.Rombel, int64, error) {
-	var rombels []*entity.Rombel
+func (r *RombelRepo) List(search, gradeLevel string, p pagination.Params) ([]*entity.RombelWithCount, int64, error) {
+	var rombels []*entity.RombelWithCount
 	var total int64
 
-	q := r.db.Model(&entity.Rombel{}).Where("deleted_at IS NULL")
+	q := r.db.Model(&entity.Rombel{}).Where("rombels.deleted_at IS NULL")
 	if search != "" {
 		q = q.Where("name ILIKE ?", "%"+search+"%")
 	}
+	if gradeLevel != "" {
+		q = q.Where("grade_level = ?", gradeLevel)
+	}
 
 	q.Count(&total)
-	err := q.Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&rombels).Error
+	err := q.Select("rombels.*, (SELECT COUNT(*) FROM user_profiles WHERE user_profiles.rombel_id = rombels.id) as students_count").
+		Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&rombels).Error
 	return rombels, total, err
+}
+
+func (r *RombelRepo) CountStudents(rombelID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&entity.UserProfile{}).Where("rombel_id = ?", rombelID).Count(&count).Error
+	return count, err
 }
 
 func (r *RombelRepo) BulkDelete(ids []uint) error {

@@ -19,7 +19,7 @@ export interface UserItem {
 }
 
 export const userApi = {
-  list: (params?: { page?: number; per_page?: number; search?: string; role?: string; rombel_id?: number; room_id?: number; tag_id?: number }, config?: AxiosRequestConfig) =>
+  list: (params?: { page?: number; per_page?: number; search?: string; role?: string; rombel_id?: number; room_id?: number; tag_id?: number; is_active?: boolean }, config?: AxiosRequestConfig) =>
     client.get('/admin/users', { params, ...config }),
 
   listTrashed: (params?: { page?: number; per_page?: number; search?: string; role?: string }, config?: AxiosRequestConfig) =>

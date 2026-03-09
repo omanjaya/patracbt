@@ -6,6 +6,7 @@ export interface Rombel {
   name: string
   grade_level: string | null
   description: string | null
+  students_count: number
   created_at: string
 }
 
@@ -13,6 +14,7 @@ export interface RombelListParams {
   page?: number
   per_page?: number
   search?: string
+  grade_level?: string
 }
 
 export const rombelApi = {
@@ -27,6 +29,9 @@ export const rombelApi = {
 
   delete: (id: number) =>
     client.delete(`/admin/rombels/${id}`),
+
+  bulkDelete: (ids: number[]) =>
+    client.post('/admin/rombels/bulk-delete', { ids }),
 
   assignUsers: (id: number, userIds: number[]) =>
     client.post(`/admin/rombels/${id}/assign-users`, { user_ids: userIds }),

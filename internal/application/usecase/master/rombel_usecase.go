@@ -3,13 +3,18 @@ package master
 import (
 	"errors"
 
+	"fmt"
+
 	"github.com/omanjaya/patra/internal/application/dto"
 	"github.com/omanjaya/patra/internal/domain/entity"
 	"github.com/omanjaya/patra/internal/domain/repository"
 	"github.com/omanjaya/patra/pkg/pagination"
 )
 
-var ErrRombelNotFound = errors.New("rombel tidak ditemukan")
+var (
+	ErrRombelNotFound    = errors.New("rombel tidak ditemukan")
+	ErrRombelHasStudents = errors.New("rombel masih memiliki siswa, tidak bisa dihapus")
+)
 
 type RombelUseCase struct {
 	repo repository.RombelRepository
@@ -19,8 +24,8 @@ func NewRombelUseCase(repo repository.RombelRepository) *RombelUseCase {
 	return &RombelUseCase{repo: repo}
 }
 
-func (uc *RombelUseCase) List(search string, p pagination.Params) ([]*entity.Rombel, int64, error) {
-	return uc.repo.List(search, p)
+func (uc *RombelUseCase) List(search, gradeLevel string, p pagination.Params) ([]*entity.RombelWithCount, int64, error) {
+	return uc.repo.List(search, gradeLevel, p)
 }
 
 func (uc *RombelUseCase) Create(req dto.CreateRombelRequest) (*entity.Rombel, error) {
@@ -55,11 +60,52 @@ func (uc *RombelUseCase) Delete(id uint) error {
 	if rombel == nil {
 		return ErrRombelNotFound
 	}
+
+	count, err := uc.repo.CountStudents(id)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrRombelHasStudents
+	}
+
 	return uc.repo.Delete(id)
 }
 
-func (uc *RombelUseCase) BulkDelete(ids []uint) error {
-	return uc.repo.BulkDelete(ids)
+// BulkDeleteResult holds the result of a bulk delete operation.
+type BulkDeleteResult struct {
+	Deleted int      `json:"deleted"`
+	Skipped []string `json:"skipped,omitempty"`
+}
+
+func (uc *RombelUseCase) BulkDelete(ids []uint) (*BulkDeleteResult, error) {
+	result := &BulkDeleteResult{}
+	var toDelete []uint
+
+	for _, id := range ids {
+		count, err := uc.repo.CountStudents(id)
+		if err != nil {
+			return nil, err
+		}
+		if count > 0 {
+			rombel, _ := uc.repo.FindByID(id)
+			name := fmt.Sprintf("ID %d", id)
+			if rombel != nil {
+				name = rombel.Name
+			}
+			result.Skipped = append(result.Skipped, fmt.Sprintf("%s masih memiliki %d siswa", name, count))
+		} else {
+			toDelete = append(toDelete, id)
+		}
+	}
+
+	if len(toDelete) > 0 {
+		if err := uc.repo.BulkDelete(toDelete); err != nil {
+			return nil, err
+		}
+	}
+	result.Deleted = len(toDelete)
+	return result, nil
 }
 
 func (uc *RombelUseCase) AssignUsers(rombelID uint, req dto.AssignUsersRequest) error {

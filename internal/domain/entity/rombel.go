@@ -16,6 +16,12 @@ type Rombel struct {
 
 func (Rombel) TableName() string { return "rombels" }
 
+// RombelWithCount embeds Rombel and adds a student count field.
+type RombelWithCount struct {
+	Rombel
+	StudentsCount int64 `json:"students_count"`
+}
+
 type UserRombel struct {
 	UserID   uint `gorm:"primaryKey" json:"user_id"`
 	RombelID uint `gorm:"primaryKey" json:"rombel_id"`

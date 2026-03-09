@@ -22,8 +22,9 @@ func NewRombelHandler(uc *master.RombelUseCase) *RombelHandler {
 func (h *RombelHandler) List(c *gin.Context) {
 	p := pagination.FromQuery(c)
 	search := c.Query("search")
+	gradeLevel := c.Query("grade_level")
 
-	rombels, total, err := h.uc.List(search, p)
+	rombels, total, err := h.uc.List(search, gradeLevel, p)
 	if err != nil {
 		response.InternalError(c, "Gagal mengambil data rombel")
 		return
@@ -82,6 +83,10 @@ func (h *RombelHandler) Delete(c *gin.Context) {
 			response.NotFound(c, err.Error())
 			return
 		}
+		if errors.Is(err, master.ErrRombelHasStudents) {
+			response.BadRequest(c, err.Error())
+			return
+		}
 		response.InternalError(c, "Gagal menghapus rombel")
 		return
 	}
@@ -96,11 +101,12 @@ func (h *RombelHandler) BulkDelete(c *gin.Context) {
 		response.ValidationError(c, err.Error())
 		return
 	}
-	if err := h.uc.BulkDelete(req.IDs); err != nil {
+	result, err := h.uc.BulkDelete(req.IDs)
+	if err != nil {
 		response.InternalError(c, "Gagal menghapus rombel")
 		return
 	}
-	response.Success(c, gin.H{"deleted": len(req.IDs)})
+	response.Success(c, result)
 }
 
 func (h *RombelHandler) AssignUsers(c *gin.Context) {

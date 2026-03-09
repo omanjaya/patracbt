@@ -11,7 +11,8 @@ type RombelRepository interface {
 	Update(rombel *entity.Rombel) error
 	Delete(id uint) error
 	BulkDelete(ids []uint) error
-	List(search string, p pagination.Params) ([]*entity.Rombel, int64, error)
+	List(search, gradeLevel string, p pagination.Params) ([]*entity.RombelWithCount, int64, error)
+	CountStudents(rombelID uint) (int64, error)
 	AssignUsers(rombelID uint, userIDs []uint) error
 	RemoveUsers(rombelID uint, userIDs []uint) error
 }
