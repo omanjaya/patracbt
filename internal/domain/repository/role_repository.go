@@ -6,7 +6,8 @@ import (
 )
 
 type RoleRepository interface {
-	List(search string, p pagination.Params) ([]entity.Role, int64, error)
+	List(search string, p pagination.Params) ([]*entity.RoleWithCount, int64, error)
+	CountUsers(roleID uint) (int64, error)
 	GetByID(id uint) (*entity.Role, error)
 	Create(role *entity.Role) error
 	Update(role *entity.Role) error

@@ -94,6 +94,10 @@ func (h *TagHandler) Delete(c *gin.Context) {
 			response.NotFound(c, err.Error())
 			return
 		}
+		if errors.Is(err, master.ErrTagInUse) {
+			response.BadRequest(c, err.Error())
+			return
+		}
 		response.InternalError(c, "Gagal menghapus tag")
 		return
 	}
@@ -108,11 +112,12 @@ func (h *TagHandler) BulkDelete(c *gin.Context) {
 		response.ValidationError(c, err.Error())
 		return
 	}
-	if err := h.uc.BulkDelete(req.IDs); err != nil {
+	result, err := h.uc.BulkDelete(req.IDs)
+	if err != nil {
 		response.InternalError(c, "Gagal menghapus tag")
 		return
 	}
-	response.Success(c, gin.H{"deleted": len(req.IDs)})
+	response.Success(c, result)
 }
 
 func (h *TagHandler) AssignUsers(c *gin.Context) {

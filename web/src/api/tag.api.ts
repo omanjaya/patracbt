@@ -4,6 +4,8 @@ export interface Tag {
   id: number
   name: string
   color: string
+  users_count: number
+  exam_schedules_count: number
   created_at: string
 }
 
@@ -38,4 +40,7 @@ export const tagApi = {
 
   exportTemplate: () =>
     client.get('/admin/tags/export-template', { responseType: 'blob' }),
+
+  bulkDelete: (ids: number[]) =>
+    client.post('/admin/tags/bulk-delete', { ids }),
 }

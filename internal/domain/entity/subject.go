@@ -12,3 +12,9 @@ type Subject struct {
 }
 
 func (Subject) TableName() string { return "subjects" }
+
+// SubjectWithCount embeds Subject and adds usage count fields.
+type SubjectWithCount struct {
+	Subject
+	QuestionBanksCount int64 `json:"question_banks_count"`
+}

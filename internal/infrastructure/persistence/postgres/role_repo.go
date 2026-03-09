@@ -17,8 +17,8 @@ func NewRoleRepository(db *gorm.DB) repository.RoleRepository {
 	return &roleRepository{db: db}
 }
 
-func (r *roleRepository) List(search string, p pagination.Params) ([]entity.Role, int64, error) {
-	var roles []entity.Role
+func (r *roleRepository) List(search string, p pagination.Params) ([]*entity.RoleWithCount, int64, error) {
+	var roles []*entity.RoleWithCount
 	var total int64
 
 	q := r.db.Model(&entity.Role{})
@@ -28,12 +28,24 @@ func (r *roleRepository) List(search string, p pagination.Params) ([]entity.Role
 
 	q.Count(&total)
 
-	err := q.Order("id desc").
+	err := q.Select(`roles.*,
+		(SELECT COUNT(*) FROM users WHERE LOWER(users.role) = LOWER(roles.name) AND users.deleted_at IS NULL) as users_count`).
+		Order("id desc").
 		Offset(p.Offset()).
 		Limit(p.PerPage).
 		Find(&roles).Error
 
 	return roles, total, err
+}
+
+func (r *roleRepository) CountUsers(roleID uint) (int64, error) {
+	var role entity.Role
+	if err := r.db.First(&role, roleID).Error; err != nil {
+		return 0, err
+	}
+	var count int64
+	err := r.db.Model(&entity.User{}).Where("LOWER(role) = LOWER(?) AND deleted_at IS NULL", role.Name).Count(&count).Error
+	return count, err
 }
 
 func (r *roleRepository) GetByID(id uint) (*entity.Role, error) {

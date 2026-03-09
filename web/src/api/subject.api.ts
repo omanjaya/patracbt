@@ -4,6 +4,7 @@ export interface Subject {
   id: number
   name: string
   code: string | null
+  question_banks_count: number
   created_at: string
 }
 
@@ -21,4 +22,7 @@ export const subjectApi = {
 
   delete: (id: number) =>
     client.delete(`/admin/subjects/${id}`),
+
+  bulkDelete: (ids: number[]) =>
+    client.post('/admin/subjects/bulk-delete', { ids }),
 }

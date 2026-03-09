@@ -2,6 +2,7 @@ package master
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/omanjaya/patra/internal/application/dto"
 	"github.com/omanjaya/patra/internal/domain/entity"
@@ -9,7 +10,10 @@ import (
 	"github.com/omanjaya/patra/pkg/pagination"
 )
 
-var ErrTagNotFound = errors.New("tag tidak ditemukan")
+var (
+	ErrTagNotFound = errors.New("tag tidak ditemukan")
+	ErrTagInUse    = errors.New("tag masih digunakan, tidak bisa dihapus")
+)
 
 type TagUseCase struct {
 	repo repository.TagRepository
@@ -19,7 +23,7 @@ func NewTagUseCase(repo repository.TagRepository) *TagUseCase {
 	return &TagUseCase{repo: repo}
 }
 
-func (uc *TagUseCase) List(search string, p pagination.Params) ([]*entity.Tag, int64, error) {
+func (uc *TagUseCase) List(search string, p pagination.Params) ([]*entity.TagWithCount, int64, error) {
 	return uc.repo.List(search, p)
 }
 
@@ -59,11 +63,52 @@ func (uc *TagUseCase) Delete(id uint) error {
 	if tag == nil {
 		return ErrTagNotFound
 	}
+
+	count, err := uc.repo.CountUsage(id)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrTagInUse
+	}
+
 	return uc.repo.Delete(id)
 }
 
-func (uc *TagUseCase) BulkDelete(ids []uint) error {
-	return uc.repo.BulkDelete(ids)
+// TagBulkDeleteResult holds the result of a bulk delete operation.
+type TagBulkDeleteResult struct {
+	Deleted int      `json:"deleted"`
+	Skipped []string `json:"skipped,omitempty"`
+}
+
+func (uc *TagUseCase) BulkDelete(ids []uint) (*TagBulkDeleteResult, error) {
+	result := &TagBulkDeleteResult{}
+	var toDelete []uint
+
+	for _, id := range ids {
+		count, err := uc.repo.CountUsage(id)
+		if err != nil {
+			return nil, err
+		}
+		if count > 0 {
+			tag, _ := uc.repo.FindByID(id)
+			name := fmt.Sprintf("ID %d", id)
+			if tag != nil {
+				name = tag.Name
+			}
+			result.Skipped = append(result.Skipped, fmt.Sprintf("%s masih digunakan (%d referensi)", name, count))
+		} else {
+			toDelete = append(toDelete, id)
+		}
+	}
+
+	if len(toDelete) > 0 {
+		if err := uc.repo.BulkDelete(toDelete); err != nil {
+			return nil, err
+		}
+	}
+	result.Deleted = len(toDelete)
+	return result, nil
 }
 
 func (uc *TagUseCase) AssignUsers(tagID uint, req dto.AssignUsersRequest) error {

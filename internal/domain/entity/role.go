@@ -11,3 +11,9 @@ type Role struct {
 
 	Permissions []Permission `gorm:"many2many:role_permissions;" json:"permissions,omitempty"`
 }
+
+// RoleWithCount embeds Role and adds a user count field.
+type RoleWithCount struct {
+	Role
+	UsersCount int64 `json:"users_count"`
+}

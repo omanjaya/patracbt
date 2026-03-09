@@ -32,18 +32,26 @@ func (r *SubjectRepo) Delete(id uint) error {
 		Update("deleted_at", gorm.Expr("NOW()")).Error
 }
 
-func (r *SubjectRepo) List(search string, p pagination.Params) ([]*entity.Subject, int64, error) {
-	var subjects []*entity.Subject
+func (r *SubjectRepo) List(search string, p pagination.Params) ([]*entity.SubjectWithCount, int64, error) {
+	var subjects []*entity.SubjectWithCount
 	var total int64
 
-	q := r.db.Model(&entity.Subject{}).Where("deleted_at IS NULL")
+	q := r.db.Model(&entity.Subject{}).Where("subjects.deleted_at IS NULL")
 	if search != "" {
 		q = q.Where("name ILIKE ? OR code ILIKE ?", "%"+search+"%", "%"+search+"%")
 	}
 
 	q.Count(&total)
-	err := q.Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&subjects).Error
+	err := q.Select(`subjects.*,
+		(SELECT COUNT(*) FROM question_banks WHERE question_banks.subject_id = subjects.id AND question_banks.deleted_at IS NULL) as question_banks_count`).
+		Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&subjects).Error
 	return subjects, total, err
+}
+
+func (r *SubjectRepo) CountUsage(subjectID uint) (int64, error) {
+	var count int64
+	err := r.db.Raw(`SELECT COUNT(*) FROM question_banks WHERE subject_id = ? AND deleted_at IS NULL`, subjectID).Scan(&count).Error
+	return count, err
 }
 
 func (r *SubjectRepo) ListAll() ([]*entity.Subject, error) {

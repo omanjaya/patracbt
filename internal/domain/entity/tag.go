@@ -21,3 +21,10 @@ type UserTag struct {
 }
 
 func (UserTag) TableName() string { return "user_tags" }
+
+// TagWithCount embeds Tag and adds usage count fields.
+type TagWithCount struct {
+	Tag
+	UsersCount         int64 `json:"users_count"`
+	ExamSchedulesCount int64 `json:"exam_schedules_count"`
+}

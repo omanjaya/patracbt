@@ -11,6 +11,7 @@ type SubjectRepository interface {
 	Update(subject *entity.Subject) error
 	Delete(id uint) error
 	BulkDelete(ids []uint) error
-	List(search string, p pagination.Params) ([]*entity.Subject, int64, error)
+	List(search string, p pagination.Params) ([]*entity.SubjectWithCount, int64, error)
+	CountUsage(subjectID uint) (int64, error)
 	ListAll() ([]*entity.Subject, error)
 }

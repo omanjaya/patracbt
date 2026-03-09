@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import BaseTable from '../../../components/ui/BaseTable.vue'
 import BaseModal from '../../../components/ui/BaseModal.vue'
 import BasePagination from '../../../components/ui/BasePagination.vue'
@@ -19,9 +19,21 @@ interface Permission {
 
 const toast = useToastStore()
 
+// System roles that cannot be edited or deleted
+const SYSTEM_ROLES = ['Super Admin', 'Operator', 'Guru', 'Peserta', 'Pengawas']
+
+function isSystemRole(name: string): boolean {
+  return SYSTEM_ROLES.includes(name)
+}
+
+function isSuperAdmin(name: string): boolean {
+  return name === 'Super Admin'
+}
+
 const columns = [
   { key: 'name', label: 'Nama Hak Akses' },
   { key: 'guard_name', label: 'Guard' },
+  { key: 'users_count', label: 'Pengguna', width: '100px' },
   { key: 'actions', label: 'Aksi', width: '120px' },
 ]
 
@@ -54,6 +66,43 @@ const selectedPermIds = ref<Set<number>>(new Set())
 const confirmModal = ref(false)
 const confirmLoading = ref(false)
 const pendingDeleteId = ref<number | null>(null)
+
+// Grouped permissions computed
+const permissionGroups = computed(() => {
+  const groups: Record<string, Permission[]> = {}
+  for (const p of allPermissions.value) {
+    if (!groups[p.group_name]) groups[p.group_name] = []
+    groups[p.group_name]!.push(p)
+  }
+  return groups
+})
+
+function isGroupAllSelected(groupName: string): boolean {
+  const perms = permissionGroups.value[groupName]
+  if (!perms || perms.length === 0) return false
+  return perms.every(p => selectedPermIds.value.has(p.id))
+}
+
+function isGroupPartialSelected(groupName: string): boolean {
+  const perms = permissionGroups.value[groupName]
+  if (!perms || perms.length === 0) return false
+  const count = perms.filter(p => selectedPermIds.value.has(p.id)).length
+  return count > 0 && count < perms.length
+}
+
+function toggleGroupAll(groupName: string) {
+  const perms = permissionGroups.value[groupName]
+  if (!perms) return
+  if (isGroupAllSelected(groupName)) {
+    perms.forEach(p => selectedPermIds.value.delete(p.id))
+  } else {
+    perms.forEach(p => selectedPermIds.value.add(p.id))
+  }
+}
+
+const isSuperAdminSelected = computed(() => {
+  return selectedRole.value ? isSuperAdmin(selectedRole.value.name) : false
+})
 
 async function loadAllPermissions() {
   try {
@@ -88,6 +137,12 @@ async function openPermissions(item: Role) {
   selectedRole.value = item
   selectedPermIds.value.clear()
   showPermModal.value = true
+
+  if (isSuperAdmin(item.name)) {
+    // Super Admin gets all permissions auto-selected
+    allPermissions.value.forEach(p => selectedPermIds.value.add(p.id))
+    return
+  }
 
   try {
     const res = await roleApi.getPermissions(item.id)
@@ -149,16 +204,39 @@ onMounted(() => {
             <div class="d-flex align-items-center gap-2">
               <i class="ti ti-shield-check"></i>
               <span class="fw-medium">{{ item.name }}</span>
+              <span v-if="isSystemRole(item.name)" class="badge bg-blue-lt text-blue ms-1">
+                <i class="ti ti-lock" style="font-size: 0.7rem;"></i> Sistem
+              </span>
             </div>
           </td>
           <td><code class="text-muted small font-monospace">{{ item.guard_name }}</code></td>
+          <td>
+            <span class="badge bg-azure-lt text-azure">
+              <i class="ti ti-users" style="font-size: 0.75rem;"></i>
+              {{ (item as any).users_count ?? 0 }}
+            </span>
+          </td>
           <td>
             <div class="d-flex gap-1">
               <button class="btn btn-sm btn-ghost-primary" @click="openPermissions(item)" title="Atur Izin (Permissions)">
                 <i class="ti ti-shield-lock"></i>
               </button>
-              <a href="#" class="btn btn-sm btn-ghost-secondary" @click.prevent="openEdit(item)"><i class="ti ti-pencil"></i></a>
-              <a href="#" class="btn btn-sm btn-ghost-danger" @click.prevent="askDelete(item.id)"><i class="ti ti-trash"></i></a>
+              <button
+                class="btn btn-sm btn-ghost-secondary"
+                :disabled="isSystemRole(item.name)"
+                :title="isSystemRole(item.name) ? 'Role sistem tidak dapat diedit' : 'Edit'"
+                @click="!isSystemRole(item.name) && openEdit(item)"
+              >
+                <i class="ti ti-pencil"></i>
+              </button>
+              <button
+                class="btn btn-sm btn-ghost-danger"
+                :disabled="isSystemRole(item.name)"
+                :title="isSystemRole(item.name) ? 'Role sistem tidak dapat dihapus' : 'Hapus'"
+                @click="!isSystemRole(item.name) && askDelete(item.id)"
+              >
+                <i class="ti ti-trash"></i>
+              </button>
             </div>
           </td>
         </tr>
@@ -185,26 +263,52 @@ onMounted(() => {
     </BaseModal>
 
     <BaseModal v-if="showPermModal" :title="`Izin Role: ${selectedRole?.name}`" @close="showPermModal = false">
-      <p class="text-muted mb-3">Atur izin akses (permissions) untuk role ini. Izin ini dapat digunakan di middleware backend maupun frontend guard.</p>
-      
+      <!-- Super Admin info banner -->
+      <div v-if="isSuperAdminSelected" class="alert alert-info d-flex align-items-center gap-2 mb-3">
+        <i class="ti ti-info-circle" style="font-size: 1.25rem;"></i>
+        <span>Super Admin memiliki semua hak akses. Izin tidak dapat diubah untuk role ini.</span>
+      </div>
+
+      <p v-else class="text-muted mb-3">Atur izin akses (permissions) untuk role ini. Izin ini dapat digunakan di middleware backend maupun frontend guard.</p>
+
       <div v-if="allPermissions.length === 0" class="alert alert-info">
         Belum ada master izin / permission. Silakan buat di menu Master Grup terlebih dahulu.
       </div>
-      
-      <div v-else style="max-height: 400px; overflow-y: auto" class="border rounded p-3">
-        <div v-for="grp in [...new Set(allPermissions.map(p => p.group_name))]" :key="grp" class="mb-3">
-          <div class="fw-bold mb-2 text-primary">{{ grp }}</div>
+
+      <div v-else style="max-height: 400px; overflow-y: auto">
+        <div
+          v-for="(perms, grp) in permissionGroups"
+          :key="grp"
+          class="card card-body mb-3 p-3"
+          style="background-color: var(--tblr-bg-surface-secondary, #f8fafc);"
+        >
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <label class="form-check d-flex align-items-center gap-2 m-0 fw-bold text-primary">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                :checked="isGroupAllSelected(grp as string)"
+                :indeterminate="isGroupPartialSelected(grp as string)"
+                :disabled="isSuperAdminSelected"
+                @change="toggleGroupAll(grp as string)"
+              />
+              <span>{{ grp }}</span>
+            </label>
+            <span class="badge bg-secondary-lt text-secondary">{{ perms.length }} izin</span>
+          </div>
+          <hr class="my-2" />
           <div class="row g-2">
-            <div 
-              v-for="p in allPermissions.filter(x => x.group_name === grp)" 
-              :key="p.id" 
+            <div
+              v-for="p in perms"
+              :key="p.id"
               class="col-md-6"
             >
               <label class="form-check m-0">
-                <input 
-                  class="form-check-input" 
-                  type="checkbox" 
+                <input
+                  class="form-check-input"
+                  type="checkbox"
                   :checked="selectedPermIds.has(p.id)"
+                  :disabled="isSuperAdminSelected"
                   @change="togglePerm(p.id)"
                 />
                 <span class="form-check-label">{{ p.name }}</span>
@@ -213,10 +317,16 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      
+
       <template #footer>
         <button class="btn btn-secondary" @click="showPermModal = false">Batal</button>
-        <button class="btn btn-primary" :disabled="saving" @click="handleSavePermissions"><span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>Simpan Izin</button>
+        <button
+          class="btn btn-primary"
+          :disabled="saving || isSuperAdminSelected"
+          @click="handleSavePermissions"
+        >
+          <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>Simpan Izin
+        </button>
       </template>
     </BaseModal>
 

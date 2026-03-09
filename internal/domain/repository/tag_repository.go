@@ -11,7 +11,8 @@ type TagRepository interface {
 	Update(tag *entity.Tag) error
 	Delete(id uint) error
 	BulkDelete(ids []uint) error
-	List(search string, p pagination.Params) ([]*entity.Tag, int64, error)
+	List(search string, p pagination.Params) ([]*entity.TagWithCount, int64, error)
+	CountUsage(tagID uint) (int64, error)
 	ListAll() ([]*entity.Tag, error)
 	AssignUsers(tagID uint, userIDs []uint) error
 	RemoveUsers(tagID uint, userIDs []uint) error

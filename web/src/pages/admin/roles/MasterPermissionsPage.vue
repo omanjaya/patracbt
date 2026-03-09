@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import BaseTable from '../../../components/ui/BaseTable.vue'
 import BaseModal from '../../../components/ui/BaseModal.vue'
 import BasePagination from '../../../components/ui/BasePagination.vue'
+import BaseConfirmModal from '@/components/ui/BaseConfirmModal.vue'
 import { useToastStore } from '../../../stores/toast.store'
 import client from '../../../api/client'
 
@@ -11,14 +12,24 @@ interface Permission {
   name: string
   group_name: string
   description: string | null
+  roles_count?: number
   created_at: string
 }
 
 const toast = useToastStore()
 
+// Protected groups whose permissions cannot be deleted
+const PROTECTED_GROUPS = ['Manajemen User', 'Manajemen Role', 'Pengaturan']
+
+function isProtected(item: Permission): boolean {
+  return PROTECTED_GROUPS.includes(item.group_name)
+}
+
 const columns = [
+  { key: 'checkbox', label: '', width: '40px' },
   { key: 'name', label: 'Nama (Permission Name)' },
   { key: 'group_name', label: 'Grup' },
+  { key: 'roles_count', label: 'Digunakan', width: '100px' },
   { key: 'description', label: 'Deskripsi' },
   { key: 'actions', label: 'Aksi', width: '100px' },
 ]
@@ -49,6 +60,51 @@ const form = reactive({
 const nameError = ref('')
 const groupError = ref('')
 
+// ─── Bulk selection ──────────────────────────────────────────
+const selectedIds = ref<Set<number>>(new Set())
+const confirmBulkDelete = ref(false)
+const confirmBulkLoading = ref(false)
+
+// Single delete confirm
+const confirmModal = ref(false)
+const confirmLoading = ref(false)
+const pendingDeleteId = ref<number | null>(null)
+
+const deletableItems = computed(() => {
+  return list.value.filter(item => !isProtected(item))
+})
+
+const allDeletableSelected = computed(() => {
+  if (deletableItems.value.length === 0) return false
+  return deletableItems.value.every(item => selectedIds.value.has(item.id))
+})
+
+const someDeletableSelected = computed(() => {
+  if (deletableItems.value.length === 0) return false
+  const count = deletableItems.value.filter(item => selectedIds.value.has(item.id)).length
+  return count > 0 && count < deletableItems.value.length
+})
+
+const selectedDeletableCount = computed(() => {
+  return list.value.filter(item => selectedIds.value.has(item.id) && !isProtected(item)).length
+})
+
+function toggleSelectAll() {
+  if (allDeletableSelected.value) {
+    deletableItems.value.forEach(item => selectedIds.value.delete(item.id))
+  } else {
+    deletableItems.value.forEach(item => selectedIds.value.add(item.id))
+  }
+}
+
+function toggleSelect(id: number) {
+  if (selectedIds.value.has(id)) {
+    selectedIds.value.delete(id)
+  } else {
+    selectedIds.value.add(id)
+  }
+}
+
 // ─── Computed ─────────────────────────────────────────────────
 const modalTitle = computed(() => isEdit.value ? 'Edit Grup (Tag)' : 'Tambah Grup (Tag)')
 
@@ -71,6 +127,11 @@ async function fetchList() {
     if (res.data.meta?.groups) {
       availableGroups.value = res.data.meta.groups
     }
+    // Clear selections that are no longer in the list
+    const currentIds = new Set(list.value.map(item => item.id))
+    for (const id of selectedIds.value) {
+      if (!currentIds.has(id)) selectedIds.value.delete(id)
+    }
   } catch (e: any) {
     toast.error(e?.response?.data?.message ?? 'Gagal memuat data')
   } finally {
@@ -87,6 +148,7 @@ async function loadGroups() {
 
 function applyFilter() {
   page.value = 1
+  selectedIds.value.clear()
   fetchList()
 }
 
@@ -141,15 +203,57 @@ async function handleSave() {
   }
 }
 
-async function handleDelete(item: Permission) {
-  if (!confirm(`Hapus grup "${item.name}"?\n\nPeserta yang sudah memiliki tag ini akan kehilangan tag tersebut.`)) return
+function askDelete(item: Permission) {
+  pendingDeleteId.value = item.id
+  confirmModal.value = true
+}
+
+async function doDelete() {
+  if (!pendingDeleteId.value) return
+  confirmLoading.value = true
   try {
-    await client.delete(`/admin/permissions/${item.id}`)
-    toast.success(`Grup "${item.name}" berhasil dihapus`)
+    await client.delete(`/admin/permissions/${pendingDeleteId.value}`)
+    toast.success('Permission berhasil dihapus')
     await fetchList()
   } catch (e: any) {
     toast.error(e?.response?.data?.message ?? 'Gagal menghapus')
+  } finally {
+    confirmLoading.value = false
+    confirmModal.value = false
+    pendingDeleteId.value = null
   }
+}
+
+function askBulkDelete() {
+  if (selectedDeletableCount.value === 0) return
+  confirmBulkDelete.value = true
+}
+
+async function doBulkDelete() {
+  confirmBulkLoading.value = true
+  const idsToDelete = list.value
+    .filter(item => selectedIds.value.has(item.id) && !isProtected(item))
+    .map(item => item.id)
+
+  let successCount = 0
+  let failCount = 0
+
+  for (const id of idsToDelete) {
+    try {
+      await client.delete(`/admin/permissions/${id}`)
+      successCount++
+    } catch {
+      failCount++
+    }
+  }
+
+  if (successCount > 0) toast.success(`${successCount} permission berhasil dihapus`)
+  if (failCount > 0) toast.error(`${failCount} permission gagal dihapus`)
+
+  selectedIds.value.clear()
+  confirmBulkDelete.value = false
+  confirmBulkLoading.value = false
+  await fetchList()
 }
 
 onMounted(() => {
@@ -206,9 +310,27 @@ onMounted(() => {
 
   <!-- Table Card -->
   <div class="card">
-    <div class="card-header">
-      <h3 class="card-title">Daftar Grup (Tag)</h3>
-      <div class="ms-auto">
+    <div class="card-header d-flex align-items-center">
+      <div class="d-flex align-items-center gap-3">
+        <label class="form-check m-0" title="Pilih semua (kecuali yang dilindungi)">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            :checked="allDeletableSelected"
+            :indeterminate="someDeletableSelected"
+            @change="toggleSelectAll"
+          />
+        </label>
+        <h3 class="card-title mb-0">Daftar Grup (Tag)</h3>
+      </div>
+      <div class="ms-auto d-flex gap-2">
+        <button
+          v-if="selectedDeletableCount > 0"
+          class="btn btn-danger"
+          @click="askBulkDelete"
+        >
+          <i class="ti ti-trash me-1"></i>Hapus {{ selectedDeletableCount }} terpilih
+        </button>
         <button class="btn btn-primary" @click="openCreate">
           <i class="ti ti-plus me-1"></i>Tambah Grup (Tag)
         </button>
@@ -217,6 +339,17 @@ onMounted(() => {
 
     <BaseTable :columns="columns" :loading="loading" empty="Belum ada grup (tag)">
       <tr v-for="item in list" :key="item.id">
+        <td>
+          <label class="form-check m-0">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              :checked="selectedIds.has(item.id)"
+              :disabled="isProtected(item)"
+              @change="toggleSelect(item.id)"
+            />
+          </label>
+        </td>
         <td>
           <div class="d-flex align-items-center gap-2">
             <span class="avatar avatar-sm bg-blue-lt text-blue">
@@ -229,6 +362,15 @@ onMounted(() => {
         </td>
         <td>
           <span class="badge bg-purple-lt text-purple">{{ item.group_name }}</span>
+          <span v-if="isProtected(item)" class="badge bg-orange-lt text-orange ms-1">
+            <i class="ti ti-shield-lock" style="font-size: 0.65rem;"></i> Dilindungi
+          </span>
+        </td>
+        <td>
+          <span class="badge bg-azure-lt text-azure">
+            <i class="ti ti-shield-check" style="font-size: 0.75rem;"></i>
+            {{ item.roles_count ?? 0 }} role
+          </span>
         </td>
         <td class="text-muted small">{{ item.description ?? '—' }}</td>
         <td>
@@ -236,7 +378,20 @@ onMounted(() => {
             <button class="btn btn-sm btn-ghost-secondary" @click="openEdit(item)" title="Edit">
               <i class="ti ti-pencil"></i>
             </button>
-            <button class="btn btn-sm btn-ghost-danger" @click="handleDelete(item)" title="Hapus">
+            <button
+              v-if="isProtected(item)"
+              class="btn btn-sm btn-ghost-danger"
+              disabled
+              title="Permission sistem tidak dapat dihapus"
+            >
+              <i class="ti ti-trash"></i>
+            </button>
+            <button
+              v-else
+              class="btn btn-sm btn-ghost-danger"
+              @click="askDelete(item)"
+              title="Hapus"
+            >
               <i class="ti ti-trash"></i>
             </button>
           </div>
@@ -304,4 +459,22 @@ onMounted(() => {
       </button>
     </template>
   </BaseModal>
+
+  <!-- Single delete confirm -->
+  <BaseConfirmModal
+    v-if="confirmModal"
+    message="Yakin ingin menghapus permission ini?"
+    :loading="confirmLoading"
+    @confirm="doDelete"
+    @close="confirmModal = false"
+  />
+
+  <!-- Bulk delete confirm -->
+  <BaseConfirmModal
+    v-if="confirmBulkDelete"
+    :message="`Yakin ingin menghapus ${selectedDeletableCount} permission terpilih? Permission dari grup yang dilindungi akan dilewati.`"
+    :loading="confirmBulkLoading"
+    @confirm="doBulkDelete"
+    @close="confirmBulkDelete = false"
+  />
 </template>

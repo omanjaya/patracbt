@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 	"github.com/omanjaya/patra/internal/application/usecase/master"
 	"github.com/omanjaya/patra/pkg/ginhelper"
@@ -67,6 +69,10 @@ func (h *RoleHandler) Update(c *gin.Context) {
 	}
 	role, err := h.uc.Update(id, req.Name, req.GuardName)
 	if err != nil {
+		if errors.Is(err, master.ErrSystemRole) {
+			response.BadRequest(c, err.Error())
+			return
+		}
 		response.InternalError(c, "Gagal memperbarui role")
 		return
 	}
@@ -80,6 +86,10 @@ func (h *RoleHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.uc.Delete(id); err != nil {
+		if errors.Is(err, master.ErrSystemRole) || errors.Is(err, master.ErrRoleHasUsers) {
+			response.BadRequest(c, err.Error())
+			return
+		}
 		response.InternalError(c, "Gagal menghapus role")
 		return
 	}

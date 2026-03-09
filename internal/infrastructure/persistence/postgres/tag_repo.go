@@ -32,18 +32,29 @@ func (r *TagRepo) Delete(id uint) error {
 		Update("deleted_at", gorm.Expr("NOW()")).Error
 }
 
-func (r *TagRepo) List(search string, p pagination.Params) ([]*entity.Tag, int64, error) {
-	var tags []*entity.Tag
+func (r *TagRepo) List(search string, p pagination.Params) ([]*entity.TagWithCount, int64, error) {
+	var tags []*entity.TagWithCount
 	var total int64
 
-	q := r.db.Model(&entity.Tag{}).Where("deleted_at IS NULL")
+	q := r.db.Model(&entity.Tag{}).Where("tags.deleted_at IS NULL")
 	if search != "" {
 		q = q.Where("name ILIKE ?", "%"+search+"%")
 	}
 
 	q.Count(&total)
-	err := q.Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&tags).Error
+	err := q.Select(`tags.*,
+		(SELECT COUNT(*) FROM user_tags WHERE user_tags.tag_id = tags.id) as users_count,
+		(SELECT COUNT(*) FROM exam_schedule_tags WHERE exam_schedule_tags.tag_id = tags.id) as exam_schedules_count`).
+		Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&tags).Error
 	return tags, total, err
+}
+
+func (r *TagRepo) CountUsage(tagID uint) (int64, error) {
+	var count int64
+	err := r.db.Raw(`SELECT
+		(SELECT COUNT(*) FROM user_tags WHERE tag_id = ?) +
+		(SELECT COUNT(*) FROM exam_schedule_tags WHERE tag_id = ?)`, tagID, tagID).Scan(&count).Error
+	return count, err
 }
 
 func (r *TagRepo) ListAll() ([]*entity.Tag, error) {
