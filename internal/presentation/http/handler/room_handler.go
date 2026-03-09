@@ -78,6 +78,10 @@ func (h *RoomHandler) Delete(c *gin.Context) {
 			response.NotFound(c, err.Error())
 			return
 		}
+		if errors.Is(err, master.ErrRoomHasStudents) {
+			response.BadRequest(c, err.Error())
+			return
+		}
 		response.InternalError(c, "Gagal menghapus ruangan")
 		return
 	}
@@ -92,11 +96,12 @@ func (h *RoomHandler) BulkDelete(c *gin.Context) {
 		response.ValidationError(c, err.Error())
 		return
 	}
-	if err := h.uc.BulkDelete(req.IDs); err != nil {
+	result, err := h.uc.BulkDelete(req.IDs)
+	if err != nil {
 		response.InternalError(c, "Gagal menghapus ruangan")
 		return
 	}
-	response.Success(c, gin.H{"deleted": len(req.IDs)})
+	response.Success(c, result)
 }
 
 func (h *RoomHandler) AssignUsers(c *gin.Context) {

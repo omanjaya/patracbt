@@ -12,3 +12,9 @@ type Room struct {
 }
 
 func (Room) TableName() string { return "rooms" }
+
+// RoomWithCount embeds Room and adds a student count field.
+type RoomWithCount struct {
+	Room
+	StudentsCount int64 `json:"students_count"`
+}

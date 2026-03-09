@@ -11,7 +11,8 @@ type RoomRepository interface {
 	Update(room *entity.Room) error
 	Delete(id uint) error
 	BulkDelete(ids []uint) error
-	List(search string, p pagination.Params) ([]*entity.Room, int64, error)
+	List(search string, p pagination.Params) ([]*entity.RoomWithCount, int64, error)
+	CountStudents(roomID uint) (int64, error)
 	AssignUsers(roomID uint, userIDs []uint) error
 	RemoveUsers(roomID uint, userIDs []uint) error
 	GetUsersByRoom(roomID uint, p pagination.Params) ([]*entity.User, int64, error)

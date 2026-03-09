@@ -40,18 +40,25 @@ func (r *RoomRepo) BulkDelete(ids []uint) error {
 		Update("deleted_at", gorm.Expr("NOW()")).Error
 }
 
-func (r *RoomRepo) List(search string, p pagination.Params) ([]*entity.Room, int64, error) {
-	var rooms []*entity.Room
+func (r *RoomRepo) List(search string, p pagination.Params) ([]*entity.RoomWithCount, int64, error) {
+	var rooms []*entity.RoomWithCount
 	var total int64
 
-	q := r.db.Model(&entity.Room{}).Where("deleted_at IS NULL")
+	q := r.db.Model(&entity.Room{}).Where("rooms.deleted_at IS NULL")
 	if search != "" {
 		q = q.Where("name ILIKE ?", "%"+search+"%")
 	}
 
 	q.Count(&total)
-	err := q.Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&rooms).Error
+	err := q.Select("rooms.*, (SELECT COUNT(*) FROM user_profiles WHERE user_profiles.room_id = rooms.id) as students_count").
+		Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&rooms).Error
 	return rooms, total, err
+}
+
+func (r *RoomRepo) CountStudents(roomID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&entity.UserProfile{}).Where("room_id = ?", roomID).Count(&count).Error
+	return count, err
 }
 
 func (r *RoomRepo) AssignUsers(roomID uint, userIDs []uint) error {
