@@ -100,12 +100,15 @@ async function fetchSettings() {
   try {
     const res = await settingApi.getAll()
     Object.assign(form, res.data.data)
+    // Ensure color fields always have a valid hex value
+    if (!form.app_primary_color) form.app_primary_color = '#206bc4'
+    if (!form.pwa_theme_color) form.pwa_theme_color = '#ffffff'
+    if (!form.pwa_background_color) form.pwa_background_color = '#ffffff'
     // Sync IP whitelist state
     ipWhitelistEnabled.value = res.data.data?.ip_whitelist_enabled === '1'
     // Convert comma-separated to newline-separated for textarea display
     const rawIPs = res.data.data?.ip_whitelist_ips || ''
     ipWhitelistIPs.value = rawIPs.split(',').map((s: string) => s.trim()).filter(Boolean).join('\n')
-
     // Sync minio form from settings
     minioForm.minio_endpoint = res.data.data?.minio_endpoint || ''
     minioForm.minio_bucket = res.data.data?.minio_bucket || ''

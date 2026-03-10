@@ -112,8 +112,8 @@ func (h *DatabaseHandler) ImportDatabase(c *gin.Context) {
 	defer file.Close()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if ext != ".dump" && ext != ".sql" && ext != ".gz" {
-		response.Error(c, http.StatusBadRequest, "BAD_REQUEST", "Format file harus .dump, .sql, atau .gz")
+	if ext != ".dump" && ext != ".sql" && ext != ".gz" && ext != ".patrabak" {
+		response.Error(c, http.StatusBadRequest, "BAD_REQUEST", "Format file harus .dump, .sql, .gz, atau .patrabak")
 		return
 	}
 

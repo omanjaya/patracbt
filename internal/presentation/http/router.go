@@ -1,6 +1,7 @@
 package http
 
 import (
+	"os"
 	"strings"
 
 	"github.com/gin-contrib/cors"
@@ -455,17 +456,25 @@ func NewRouter(cfg *config.Config, h Handlers, settingRepo repository.SettingRep
 	// Serve frontend static files (production)
 	if cfg.App.Env == "production" {
 		r.Static("/assets", "./web/dist/assets")
-		r.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
-		r.StaticFile("/manifest.webmanifest", "./web/dist/manifest.webmanifest")
+		r.Static("/css", "./web/dist/css")
+		r.Static("/js", "./web/dist/js")
 
-		// SPA fallback: serve index.html for all non-API, non-static routes
+		// SPA fallback: try static file first, then index.html
 		r.NoRoute(func(c *gin.Context) {
-			// Don't serve index.html for API routes
-			if strings.HasPrefix(c.Request.URL.Path, "/api/") ||
-				strings.HasPrefix(c.Request.URL.Path, "/ws/") {
+			path := c.Request.URL.Path
+			// Return 404 for API and WS routes
+			if strings.HasPrefix(path, "/api/") ||
+				strings.HasPrefix(path, "/ws/") {
 				response.NotFound(c, "Not found")
 				return
 			}
+			// Try serving as a static file from web/dist
+			filePath := "./web/dist" + path
+			if _, err := os.Stat(filePath); err == nil {
+				c.File(filePath)
+				return
+			}
+			// SPA fallback
 			c.File("./web/dist/index.html")
 		})
 	}
