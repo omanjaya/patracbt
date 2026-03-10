@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { getIllustration } from '../../../utils/avatar'
+
 import BaseModal from '../../../components/ui/BaseModal.vue'
 import BasePagination from '../../../components/ui/BasePagination.vue'
 import BaseConfirmModal from '@/components/ui/BaseConfirmModal.vue'
@@ -212,7 +212,7 @@ onMounted(fetchList)
     </div>
 
     <div v-if="!loading && list.length === 0" class="text-center py-5">
-      <img :src="getIllustration('hybrid-work')" class="img-fluid mb-3 opacity-75" style="max-height:160px" alt="">
+      <i class="ti ti-tag-off fs-1 mb-2 d-block opacity-50"></i>
       <p class="text-muted">Belum ada tag</p>
     </div>
 

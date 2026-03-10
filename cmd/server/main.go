@@ -99,7 +99,7 @@ func main() {
 	// Use Cases
 	loginUC := auth.NewLoginUseCase(userRepo, examSessionRepo, cfg, rdb)
 	refreshTokenUC := auth.NewRefreshTokenUseCase(userRepo, cfg)
-	userUC := useruc.NewUserUseCase(userRepo, examSessionRepo)
+	userUC := useruc.NewUserUseCase(userRepo, examSessionRepo, rombelRepo)
 	rombelUC := masteruc.NewRombelUseCase(rombelRepo)
 	subjectUC := masteruc.NewSubjectUseCase(subjectRepo)
 	tagUC := masteruc.NewTagUseCase(tagRepo)

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -340,6 +341,94 @@ func formatCount(n int64) string {
 	return fmt.Sprintf("%d", n)
 }
 
+// GET /admin/dashboard/alerts — actionable info cards for admin
+func (h *DashboardHandler) GetAdminAlerts(c *gin.Context) {
+	type adminAlert struct {
+		Type    string `json:"type"`    // e.g. "peserta_tanpa_rombel", "rombel_kosong", "bank_soal_kosong"
+		Title   string `json:"title"`
+		Message string `json:"message"`
+		Count   int64  `json:"count"`
+		Link    string `json:"link"` // frontend route
+		Icon    string `json:"icon"`
+		Color   string `json:"color"` // warning, danger, info
+	}
+
+	alerts := make([]adminAlert, 0)
+
+	// 1. Peserta tanpa rombel
+	var pesertaTanpaRombel int64
+	if err := h.db.Raw(`
+		SELECT COUNT(*) FROM users
+		WHERE role = 'peserta' AND deleted_at IS NULL AND is_active = true
+		AND NOT EXISTS (SELECT 1 FROM user_rombels WHERE user_rombels.user_id = users.id)
+	`).Scan(&pesertaTanpaRombel).Error; err == nil && pesertaTanpaRombel > 0 {
+		alerts = append(alerts, adminAlert{
+			Type:    "peserta_tanpa_rombel",
+			Title:   "Peserta Belum Masuk Rombel",
+			Message: fmt.Sprintf("%d peserta belum terdaftar di rombel manapun", pesertaTanpaRombel),
+			Count:   pesertaTanpaRombel,
+			Link:    "/admin/rombel-management",
+			Icon:    "ti-users-minus",
+			Color:   "warning",
+		})
+	}
+
+	// 2. Rombel kosong (tanpa anggota)
+	var rombelKosong int64
+	if err := h.db.Raw(`
+		SELECT COUNT(*) FROM rombels r
+		WHERE r.deleted_at IS NULL
+		AND NOT EXISTS (SELECT 1 FROM user_rombels ur WHERE ur.rombel_id = r.id)
+	`).Scan(&rombelKosong).Error; err == nil && rombelKosong > 0 {
+		alerts = append(alerts, adminAlert{
+			Type:    "rombel_kosong",
+			Title:   "Rombel Kosong",
+			Message: fmt.Sprintf("%d rombel tidak memiliki anggota", rombelKosong),
+			Count:   rombelKosong,
+			Link:    "/admin/rombel-management",
+			Icon:    "ti-users-group",
+			Color:   "info",
+		})
+	}
+
+	// 3. Bank soal kosong (tanpa soal)
+	var bankSoalKosong int64
+	if err := h.db.Raw(`
+		SELECT COUNT(*) FROM question_banks qb
+		WHERE qb.deleted_at IS NULL
+		AND NOT EXISTS (SELECT 1 FROM questions q WHERE q.question_bank_id = qb.id)
+	`).Scan(&bankSoalKosong).Error; err == nil && bankSoalKosong > 0 {
+		alerts = append(alerts, adminAlert{
+			Type:    "bank_soal_kosong",
+			Title:   "Bank Soal Kosong",
+			Message: fmt.Sprintf("%d bank soal belum memiliki soal", bankSoalKosong),
+			Count:   bankSoalKosong,
+			Link:    "/admin/question-banks",
+			Icon:    "ti-book-off",
+			Color:   "info",
+		})
+	}
+
+	// 4. Peserta tidak aktif
+	var pesertaNonaktif int64
+	if err := h.db.Raw(`
+		SELECT COUNT(*) FROM users
+		WHERE role = 'peserta' AND deleted_at IS NULL AND is_active = false
+	`).Scan(&pesertaNonaktif).Error; err == nil && pesertaNonaktif > 0 {
+		alerts = append(alerts, adminAlert{
+			Type:    "peserta_nonaktif",
+			Title:   "Peserta Nonaktif",
+			Message: fmt.Sprintf("%d peserta dalam status nonaktif", pesertaNonaktif),
+			Count:   pesertaNonaktif,
+			Link:    "/admin/users",
+			Icon:    "ti-user-off",
+			Color:   "secondary",
+		})
+	}
+
+	response.Success(c, alerts)
+}
+
 // GET /admin/dashboard/server-stats
 func (h *DashboardHandler) GetServerStats(c *gin.Context) {
 	type serverStats struct {
@@ -364,13 +453,13 @@ func (h *DashboardHandler) GetServerStats(c *gin.Context) {
 	// CPU
 	cpuPercents, err := cpu.Percent(0, false)
 	if err == nil && len(cpuPercents) > 0 {
-		stats.CPUPercent = cpuPercents[0]
+		stats.CPUPercent = math.Round(cpuPercents[0])
 	}
 
 	// RAM
 	vmem, err := mem.VirtualMemory()
 	if err == nil {
-		stats.RAMPercent = vmem.UsedPercent
+		stats.RAMPercent = math.Round(vmem.UsedPercent)
 		stats.RAMUsed = formatBytesGo(vmem.Used)
 		stats.RAMTotal = formatBytesGo(vmem.Total)
 	}
@@ -378,7 +467,7 @@ func (h *DashboardHandler) GetServerStats(c *gin.Context) {
 	// Disk
 	diskStat, err := disk.Usage("/")
 	if err == nil {
-		stats.DiskPercent = diskStat.UsedPercent
+		stats.DiskPercent = math.Round(diskStat.UsedPercent)
 		stats.DiskUsed = formatBytesGo(diskStat.Used)
 		stats.DiskTotal = formatBytesGo(diskStat.Total)
 	}

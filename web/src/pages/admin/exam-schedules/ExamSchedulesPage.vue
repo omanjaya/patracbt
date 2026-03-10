@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getIllustration } from '../../../utils/avatar'
+
 import BaseTable from '../../../components/ui/BaseTable.vue'
 import BaseModal from '../../../components/ui/BaseModal.vue'
 import BasePagination from '../../../components/ui/BasePagination.vue'
@@ -381,7 +381,7 @@ onMounted(() => { fetchList(); fetchDependencies() })
 
       <BaseTable :columns="columns" :loading="loading" :row-count="list.length" empty="Belum ada jadwal ujian">
         <template #empty>
-          <img :src="getIllustration('calendar')" class="img-fluid mb-3 opacity-75" style="max-height:160px" alt="">
+          <i class="ti ti-calendar-off fs-1 mb-2 d-block opacity-50"></i>
           <p class="text-muted mb-0">Belum ada jadwal ujian</p>
         </template>
         <template #default>

@@ -178,6 +178,7 @@ func NewRouter(cfg *config.Config, h Handlers, settingRepo repository.SettingRep
 			admin.GET("/admin/dashboard/ongoing-exams", h.Dashboard.GetOngoingExams)
 			admin.GET("/admin/dashboard/upcoming-exams", h.Dashboard.GetUpcomingExams)
 			admin.GET("/admin/dashboard/recent-activity", h.Dashboard.GetRecentActivity)
+			admin.GET("/admin/dashboard/alerts", h.Dashboard.GetAdminAlerts)
 
 			// Rombels
 			admin.GET("/admin/rombels", perm("rombel-list"), h.Rombel.List)
@@ -332,6 +333,7 @@ func NewRouter(cfg *config.Config, h Handlers, settingRepo repository.SettingRep
 			staff.PATCH("/question-banks/:id/questions/reorder", perm("question-bank-edit"), h.Question.Reorder)
 			staff.POST("/question-banks/:id/clone", perm("question-bank-create"), h.QuestionBank.Clone)
 			staff.POST("/question-banks/:id/import", perm("question-bank-create"), h.QuestionImport.Import)
+			staff.POST("/question-banks/:id/import/text", perm("question-bank-create"), h.QuestionImport.ImportText)
 			staff.GET("/question-banks/:id/import/template", perm("question-bank-list"), h.QuestionImport.DownloadTemplate)
 
 			// Stimuli
@@ -426,6 +428,7 @@ func NewRouter(cfg *config.Config, h Handlers, settingRepo repository.SettingRep
 
 		exam := protected.Group("/exam")
 		exam.Use(middleware.PanicMode(settingRepo))
+		exam.Use(middleware.IPWhitelist(settingRepo))
 		exam.Use(middleware.EnforcePWA(settingRepo))
 		exam.Use(middleware.SingleSession(db, cfg.JWT.AccessSecret))
 		{

@@ -23,6 +23,30 @@ func (r *RombelRepo) FindByID(id uint) (*entity.Rombel, error) {
 	return &rombel, err
 }
 
+func (r *RombelRepo) FindByName(name string) (*entity.Rombel, error) {
+	var rombel entity.Rombel
+	err := r.db.Where("LOWER(name) = LOWER(?) AND deleted_at IS NULL", name).First(&rombel).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &rombel, err
+}
+
+func (r *RombelRepo) FindOrCreateByName(name string) (*entity.Rombel, error) {
+	existing, err := r.FindByName(name)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return existing, nil
+	}
+	newRombel := &entity.Rombel{Name: name}
+	if err := r.db.Create(newRombel).Error; err != nil {
+		return nil, err
+	}
+	return newRombel, nil
+}
+
 func (r *RombelRepo) Update(rombel *entity.Rombel) error {
 	return r.db.Save(rombel).Error
 }

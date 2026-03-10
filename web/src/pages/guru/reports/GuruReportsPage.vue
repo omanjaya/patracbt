@@ -6,7 +6,7 @@ import {
   type ExamAnalysis, type SessionRow, type KeyChangesResponse, type RegradeResult,
   type RegradeLogEntry
 } from '../../../api/report.api'
-import { getIllustration } from '../../../utils/avatar'
+
 import { sanitizeHtml } from '@/composables/useSafeHtml'
 import BaseConfirmModal from '@/components/ui/BaseConfirmModal.vue'
 import BasePageHeader from '@/components/ui/BasePageHeader.vue'
@@ -716,7 +716,7 @@ onMounted(loadSchedules)
       </div>
       <div v-else class="card">
         <div class="card-body text-center text-muted py-4">
-          <img :src="getIllustration('search')" class="img-fluid mb-3 opacity-75" style="max-height:100px" alt="">
+          <i class="ti ti-search-off fs-1 mb-2 d-block opacity-50"></i>
           <p class="mb-0">Belum ada data sesi</p>
         </div>
       </div>
@@ -771,7 +771,7 @@ onMounted(loadSchedules)
       </div>
       <div v-else class="card">
         <div class="card-body text-center text-muted py-4">
-          <img :src="getIllustration('chart')" class="img-fluid mb-3 opacity-75" style="max-height:100px" alt="">
+          <i class="ti ti-chart-off fs-1 mb-2 d-block opacity-50"></i>
           <p class="mb-0">Belum cukup data untuk analisis (perlu minimal 6 sesi selesai)</p>
         </div>
       </div>

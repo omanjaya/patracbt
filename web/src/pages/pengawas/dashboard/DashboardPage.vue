@@ -9,7 +9,7 @@ import {
   type PengawasViolation,
   type PengawasActiveRoom,
 } from '../../../api/dashboard.api'
-import { getIllustration } from '../../../utils/avatar'
+
 import BasePageHeader from '@/components/ui/BasePageHeader.vue'
 
 const authStore = useAuthStore()
@@ -274,7 +274,7 @@ const statCards = [
         </div>
 
         <div v-else-if="!activeRooms.length" class="card-body text-center py-5">
-          <img :src="getIllustration('hybrid-work')" class="img-fluid mb-3 opacity-75" style="max-height:100px" alt="">
+          <i class="ti ti-eye-off fs-1 mb-2 d-block opacity-50"></i>
           <p class="text-muted mb-0">Tidak ada ujian aktif saat ini.</p>
         </div>
 

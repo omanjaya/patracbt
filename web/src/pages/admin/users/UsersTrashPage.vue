@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getAvatarUrl } from '../../../utils/avatar'
 import BaseTable from '../../../components/ui/BaseTable.vue'
 import BasePagination from '../../../components/ui/BasePagination.vue'
 import BaseConfirmModal from '@/components/ui/BaseConfirmModal.vue'
@@ -221,10 +220,7 @@ onMounted(fetchList)
           </td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <span
-                class="avatar avatar-sm rounded-circle"
-                :style="`background-image:url(${getAvatarUrl(item.id)})`"
-              ></span>
+              <span class="avatar avatar-sm rounded-circle">{{ item.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() }}</span>
               <div>
                 <p class="fw-medium mb-0">{{ item.name }}</p>
                 <p class="text-muted small mb-0">{{ item.email ?? '' }}</p>

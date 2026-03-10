@@ -3,7 +3,6 @@ import { computed, watch, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.store'
 import { useBrandingStore } from '../../stores/branding.store'
-import { getAvatarUrl } from '../../utils/avatar'
 
 const authStore = useAuthStore()
 const branding = useBrandingStore()
@@ -155,10 +154,8 @@ watch(() => route.path, () => {
             <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Buka menu pengguna" aria-expanded="false" role="button">
               <span
                 class="avatar avatar-sm"
-                :style="authStore.user?.id ? `background-image:url(${getAvatarUrl(authStore.user.id)})` : ''"
-              >
-                <span v-if="!authStore.user?.id">{{ authStore.user?.name?.charAt(0).toUpperCase() }}</span>
-              </span>
+                :style="authStore.user?.avatar_url ? `background-image:url(${authStore.user.avatar_url})` : ''"
+              >{{ !authStore.user?.avatar_url ? (authStore.user?.name ?? '').split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() : '' }}</span>
               <div class="d-none d-lg-block ps-2">
                 <div>{{ authStore.user?.name }}</div>
                 <div class="mt-1 small text-secondary">{{ authStore.user?.role }}</div>

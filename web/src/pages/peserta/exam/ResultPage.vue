@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { examApi, type ExamSession } from '../../../api/exam.api'
-import { getIllustration } from '../../../utils/avatar'
 
 const route = useRoute()
 const router = useRouter()
@@ -147,7 +146,7 @@ onMounted(fetchResult)
         </div>
 
         <div class="card-body text-center py-4">
-          <img :src="getIllustration('graduation')" class="img-fluid mb-3" style="max-height:160px" alt="">
+          <i class="ti ti-certificate text-green" style="font-size:4rem"></i>
 
           <!-- Score visible -->
           <template v-if="canShowScore">

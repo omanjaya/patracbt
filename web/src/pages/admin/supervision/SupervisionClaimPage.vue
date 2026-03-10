@@ -142,7 +142,9 @@ async function copyRoomToken(token: string, roomId: number) {
     await navigator.clipboard.writeText(token)
     tokenCopied.value = roomId
     setTimeout(() => { tokenCopied.value = null }, 2000)
-  } catch {}
+  } catch {
+    console.warn('Clipboard not available')
+  }
 }
 
 onMounted(loadData)

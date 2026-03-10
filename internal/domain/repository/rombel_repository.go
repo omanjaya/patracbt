@@ -8,6 +8,8 @@ import (
 type RombelRepository interface {
 	Create(rombel *entity.Rombel) error
 	FindByID(id uint) (*entity.Rombel, error)
+	FindByName(name string) (*entity.Rombel, error)
+	FindOrCreateByName(name string) (*entity.Rombel, error)
 	Update(rombel *entity.Rombel) error
 	Delete(id uint) error
 	BulkDelete(ids []uint) error

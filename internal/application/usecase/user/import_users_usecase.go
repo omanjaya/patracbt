@@ -46,13 +46,15 @@ type parsedRow struct {
 	Class    string
 	Major    string
 	Phone    string
+	Rombel   string // column K — auto-assign to rombel by name
 }
 
 // ImportUsersFromExcel reads an Excel file with two-phase validation:
 // Phase 1: Parse all rows and collect validation errors (including in-file and DB duplicates).
 // Phase 2: If no critical errors, create all valid users.
-// Expected columns: A=name, B=username, C=password, D=role, E=email, F=nis, G=nip, H=class, I=major, J=phone
-func ImportUsersFromExcel(data []byte, userRepo repository.UserRepository) (*ImportResult, error) {
+// Expected columns: A=name, B=username, C=password, D=role, E=email, F=nis, G=nip, H=class, I=major, J=phone, K=rombel
+// Column K (rombel) is optional — if provided, auto-assigns user to rombel by name (creates if not exists).
+func ImportUsersFromExcel(data []byte, userRepo repository.UserRepository, rombelRepo ...repository.RombelRepository) (*ImportResult, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(data))
 	if err != nil {
 		return nil, errors.New("gagal membaca file Excel: " + err.Error())
@@ -69,6 +71,7 @@ func ImportUsersFromExcel(data []byte, userRepo repository.UserRepository) (*Imp
 	}
 
 	result := &ImportResult{}
+	var rombelAssignments []rombelAssignment
 
 	// ── Phase 1: Parse and validate all rows ──
 	var parsed []parsedRow
@@ -107,6 +110,7 @@ func ImportUsersFromExcel(data []byte, userRepo repository.UserRepository) (*Imp
 		p.Class = strings.TrimSpace(safeCol(row, 7))
 		p.Major = strings.TrimSpace(safeCol(row, 8))
 		p.Phone = strings.TrimSpace(safeCol(row, 9))
+		p.Rombel = strings.TrimSpace(safeCol(row, 10))
 
 		if p.Role == "" {
 			p.Role = entity.RolePeserta
@@ -303,6 +307,12 @@ func ImportUsersFromExcel(data []byte, userRepo repository.UserRepository) (*Imp
 			result.FailedCount++
 			continue
 		}
+
+		// Track rombel assignment for after commit
+		if p.Rombel != "" && user.ID > 0 {
+			rombelAssignments = append(rombelAssignments, rombelAssignment{UserID: user.ID, RombelName: p.Rombel})
+		}
+
 		result.Created++
 	}
 
@@ -313,10 +323,35 @@ func ImportUsersFromExcel(data []byte, userRepo repository.UserRepository) (*Imp
 		}
 	}
 
+	// Post-commit: assign users to rombels (outside transaction, non-blocking)
+	if len(rombelAssignments) > 0 && len(rombelRepo) > 0 && rombelRepo[0] != nil {
+		rRepo := rombelRepo[0]
+		// Group by rombel name
+		rombelMap := map[string][]uint{} // rombelName -> []userIDs
+		for _, ra := range rombelAssignments {
+			rombelMap[ra.RombelName] = append(rombelMap[ra.RombelName], ra.UserID)
+		}
+		for rombelName, userIDs := range rombelMap {
+			rombel, err := rRepo.FindOrCreateByName(rombelName)
+			if err != nil {
+				result.Errors = append(result.Errors, ImportError{Row: 0, Column: "rombel", Message: fmt.Sprintf("gagal buat rombel '%s': %s", rombelName, err.Error())})
+				continue
+			}
+			if err := rRepo.AssignUsers(rombel.ID, userIDs); err != nil {
+				result.Errors = append(result.Errors, ImportError{Row: 0, Column: "rombel", Message: fmt.Sprintf("gagal assign ke rombel '%s': %s", rombelName, err.Error())})
+			}
+		}
+	}
+
 	result.SuccessCount = result.Created
 	result.FailedCount += result.Skipped
 
 	return result, nil
+}
+
+type rombelAssignment struct {
+	UserID     uint
+	RombelName string
 }
 
 // safeCol returns the column value at index or empty string if out of bounds.

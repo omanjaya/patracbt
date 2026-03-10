@@ -174,6 +174,22 @@ func (r *UserRepo) List(filter repository.UserListFilter, p pagination.Params) (
 		q = q.Joins("JOIN user_rombels ON user_rombels.user_id = users.id").
 			Where("user_rombels.rombel_id = ?", *filter.RombelID)
 	}
+	if filter.NoRombel {
+		q = q.Where("NOT EXISTS (SELECT 1 FROM user_rombels WHERE user_rombels.user_id = users.id)")
+	}
+	if filter.ExcludeRombelID != nil {
+		q = q.Where("NOT EXISTS (SELECT 1 FROM user_rombels WHERE user_rombels.user_id = users.id AND user_rombels.rombel_id = ?)", *filter.ExcludeRombelID)
+	}
+	if filter.RoomID != nil {
+		q = q.Joins("JOIN user_profiles up_room ON up_room.user_id = users.id").
+			Where("up_room.room_id = ?", *filter.RoomID)
+	}
+	if filter.NoRoom {
+		q = q.Where("NOT EXISTS (SELECT 1 FROM user_profiles up_nr WHERE up_nr.user_id = users.id AND up_nr.room_id IS NOT NULL)")
+	}
+	if filter.ExcludeRoomID != nil {
+		q = q.Where("NOT EXISTS (SELECT 1 FROM user_profiles up_er WHERE up_er.user_id = users.id AND up_er.room_id = ?)", *filter.ExcludeRoomID)
+	}
 
 	q.Count(&total)
 	err := q.Offset(p.Offset()).Limit(p.PerPage).Order("name ASC").Find(&users).Error

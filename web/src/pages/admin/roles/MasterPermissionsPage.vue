@@ -143,7 +143,9 @@ async function loadGroups() {
   try {
     const res = await client.get('/admin/permissions/groups')
     availableGroups.value = res.data.data ?? []
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to load permission groups:', e)
+  }
 }
 
 function applyFilter() {
@@ -242,7 +244,8 @@ async function doBulkDelete() {
     try {
       await client.delete(`/admin/permissions/${id}`)
       successCount++
-    } catch {
+    } catch (e) {
+      console.warn(`Failed to delete permission ${id}:`, e)
       failCount++
     }
   }

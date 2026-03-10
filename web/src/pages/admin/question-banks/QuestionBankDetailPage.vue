@@ -241,7 +241,9 @@ function openEdit(q: Question) {
       form.matrix_cols = opts?.columns ?? form.matrix_cols
       form.matrix_correct = ans ?? {}
     }
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to parse question options:', e)
+  }
 
   showModal.value = true
 }
@@ -415,6 +417,48 @@ const isLocked = computed(() => bank.value?.is_locked === true)
 
 const qtLabel = (t: string) => QUESTION_TYPES.find(x => x.value === t)?.label ?? t
 
+// --- Statistics Distribution ---
+const showStats = ref(false)
+
+const statsType = computed(() => {
+  const map: Record<string, number> = {}
+  for (const q of questions.value) {
+    const label = qtLabel(q.question_type)
+    map[label] = (map[label] || 0) + 1
+  }
+  return Object.entries(map).map(([label, count]) => ({ label, count, pct: total.value > 0 ? Math.round((count / total.value) * 100) : 0 }))
+})
+
+const statsDifficulty = computed(() => {
+  const map: Record<string, number> = {}
+  for (const q of questions.value) {
+    const label = DIFFICULTY_LABELS[q.difficulty] ?? q.difficulty
+    map[label] = (map[label] || 0) + 1
+  }
+  return Object.entries(map).map(([label, count]) => ({ label, count, pct: total.value > 0 ? Math.round((count / total.value) * 100) : 0 }))
+})
+
+const statsBloom = computed(() => {
+  const map: Record<string, number> = {}
+  for (const q of questions.value) {
+    const bl = BLOOM_LEVELS.find(b => b.value === q.bloom_level)
+    const label = bl ? bl.label : 'Tidak Ditentukan'
+    map[label] = (map[label] || 0) + 1
+  }
+  return Object.entries(map).map(([label, count]) => ({ label, count, pct: total.value > 0 ? Math.round((count / total.value) * 100) : 0 }))
+})
+
+const difficultyColor: Record<string, string> = { 'Mudah': 'success', 'Sedang': 'warning', 'Sulit': 'danger' }
+const bloomColor = (label: string) => {
+  if (label.startsWith('C1')) return 'blue'
+  if (label.startsWith('C2')) return 'cyan'
+  if (label.startsWith('C3')) return 'green'
+  if (label.startsWith('C4')) return 'orange'
+  if (label.startsWith('C5')) return 'red'
+  if (label.startsWith('C6')) return 'purple'
+  return 'secondary'
+}
+
 // Reorder state
 const reorderMode = ref(false)
 const reorderList = ref<Question[]>([])
@@ -547,6 +591,82 @@ onMounted(() => { fetchBank(); fetchQuestions(); fetchStimuli() })
           <option value="hard">Sulit</option>
         </select>
         <span class="ms-auto text-muted small">{{ filteredQuestions.length }} soal ditampilkan</span>
+        <button class="btn btn-sm btn-ghost-secondary" @click="showStats = !showStats" :title="showStats ? 'Sembunyikan statistik' : 'Tampilkan statistik'">
+          <i class="ti ti-chart-bar"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Statistics Distribution -->
+    <div v-if="showStats && questions.length > 0" class="row g-3 mb-3">
+      <!-- By Type -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-header py-2">
+            <h4 class="card-title mb-0 d-flex align-items-center gap-2">
+              <i class="ti ti-list-check text-primary"></i>
+              <span>Distribusi Tipe Soal</span>
+            </h4>
+          </div>
+          <div class="card-body py-2">
+            <div v-for="s in statsType" :key="s.label" class="mb-2">
+              <div class="d-flex justify-content-between small mb-1">
+                <span>{{ s.label }}</span>
+                <span class="text-muted">{{ s.count }} ({{ s.pct }}%)</span>
+              </div>
+              <div class="progress progress-sm">
+                <div class="progress-bar bg-primary" :style="{ width: s.pct + '%' }"></div>
+              </div>
+            </div>
+            <div v-if="!statsType.length" class="text-muted small text-center py-2">Belum ada data</div>
+          </div>
+        </div>
+      </div>
+      <!-- By Difficulty -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-header py-2">
+            <h4 class="card-title mb-0 d-flex align-items-center gap-2">
+              <i class="ti ti-flame text-warning"></i>
+              <span>Distribusi Kesulitan</span>
+            </h4>
+          </div>
+          <div class="card-body py-2">
+            <div v-for="s in statsDifficulty" :key="s.label" class="mb-2">
+              <div class="d-flex justify-content-between small mb-1">
+                <span>{{ s.label }}</span>
+                <span class="text-muted">{{ s.count }} ({{ s.pct }}%)</span>
+              </div>
+              <div class="progress progress-sm">
+                <div class="progress-bar" :class="`bg-${difficultyColor[s.label] ?? 'secondary'}`" :style="{ width: s.pct + '%' }"></div>
+              </div>
+            </div>
+            <div v-if="!statsDifficulty.length" class="text-muted small text-center py-2">Belum ada data</div>
+          </div>
+        </div>
+      </div>
+      <!-- By Bloom Level -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-header py-2">
+            <h4 class="card-title mb-0 d-flex align-items-center gap-2">
+              <i class="ti ti-brain text-purple"></i>
+              <span>Taksonomi Bloom</span>
+            </h4>
+          </div>
+          <div class="card-body py-2">
+            <div v-for="s in statsBloom" :key="s.label" class="mb-2">
+              <div class="d-flex justify-content-between small mb-1">
+                <span>{{ s.label }}</span>
+                <span class="text-muted">{{ s.count }} ({{ s.pct }}%)</span>
+              </div>
+              <div class="progress progress-sm">
+                <div class="progress-bar" :class="`bg-${bloomColor(s.label)}`" :style="{ width: s.pct + '%' }"></div>
+              </div>
+            </div>
+            <div v-if="!statsBloom.length" class="text-muted small text-center py-2">Belum ada data</div>
+          </div>
+        </div>
       </div>
     </div>
 

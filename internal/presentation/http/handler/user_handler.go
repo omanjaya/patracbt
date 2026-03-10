@@ -39,6 +39,33 @@ func (h *UserHandler) List(c *gin.Context) {
 			filter.RombelID = &uid
 		}
 	}
+	if c.Query("no_rombel") == "true" {
+		filter.NoRombel = true
+	}
+	if rid := c.Query("exclude_rombel_id"); rid != "" {
+		id, err := strconv.ParseUint(rid, 10, 64)
+		if err == nil {
+			uid := uint(id)
+			filter.ExcludeRombelID = &uid
+		}
+	}
+	if rid := c.Query("room_id"); rid != "" {
+		id, err := strconv.ParseUint(rid, 10, 64)
+		if err == nil {
+			uid := uint(id)
+			filter.RoomID = &uid
+		}
+	}
+	if c.Query("no_room") == "true" {
+		filter.NoRoom = true
+	}
+	if rid := c.Query("exclude_room_id"); rid != "" {
+		id, err := strconv.ParseUint(rid, 10, 64)
+		if err == nil {
+			uid := uint(id)
+			filter.ExcludeRoomID = &uid
+		}
+	}
 
 	users, total, err := h.uc.List(filter, p)
 	if err != nil {
@@ -198,9 +225,10 @@ func (h *UserHandler) ImportExcel(c *gin.Context) {
 
 // GET /admin/users/import/template
 func (h *UserHandler) DownloadTemplate(c *gin.Context) {
-	csvContent := "name,username,password,role,email,nis,nip,class,major,phone\r\n" +
-		"Budi Santoso,budisantoso,password123,peserta,budi@sekolah.id,12345,,XII IPA 1,IPA,081234567890\r\n" +
-		"Siti Rahayu,sitirahayu,password123,guru,siti@sekolah.id,,198801012010,,,081298765432\r\n"
+	csvContent := "name,username,password,role,email,nis,nip,class,major,phone,rombel\r\n" +
+		"Budi Santoso,budisantoso,password123,peserta,budi@sekolah.id,12345,,XII IPA 1,IPA,081234567890,XII IPA 1\r\n" +
+		"Ani Wulandari,aniwulandari,password123,peserta,ani@sekolah.id,12346,,XII IPA 1,IPA,,XII IPA 1\r\n" +
+		"Siti Rahayu,sitirahayu,password123,guru,siti@sekolah.id,,198801012010,,,081298765432,\r\n"
 
 	c.Header("Content-Disposition", `attachment; filename="template-import-user.csv"`)
 	c.Header("Content-Type", "text/csv")

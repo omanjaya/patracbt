@@ -6,9 +6,14 @@ import (
 )
 
 type UserListFilter struct {
-	Search   string
-	Role     string
-	RombelID *uint
+	Search          string
+	Role            string
+	RombelID        *uint
+	NoRombel        bool  // peserta with no rombel assignment
+	ExcludeRombelID *uint // exclude users already in this rombel
+	RoomID          *uint
+	NoRoom          bool  // peserta with no room assignment
+	ExcludeRoomID   *uint // exclude users already in this room
 }
 
 type UserRepository interface {

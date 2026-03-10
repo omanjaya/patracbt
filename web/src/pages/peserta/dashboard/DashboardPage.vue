@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { examApi, type ExamSchedule, type ExamSession } from '../../../api/exam.api'
 import { useAuthStore } from '../../../stores/auth.store'
 import { useToastStore } from '../../../stores/toast.store'
-import { getIllustration } from '../../../utils/avatar'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -340,7 +339,7 @@ onUnmounted(() => {
           </div>
 
           <div v-if="!available.length" class="card-body text-center py-5">
-            <img :src="getIllustration('calendar')" class="img-fluid mb-3 opacity-75" style="max-height:120px" alt="">
+            <i class="ti ti-calendar-off fs-1 mb-2 d-block opacity-50"></i>
             <h3 class="text-muted fw-normal">Tidak ada ujian saat ini</h3>
             <p class="text-muted small mb-0">Ujian akan muncul di sini ketika sudah dipublikasi oleh pengajar.</p>
           </div>

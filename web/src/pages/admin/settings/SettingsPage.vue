@@ -44,6 +44,8 @@ const selectedMinioFile = ref('')
 const showMinioBackupList = ref(false)
 
 const form = reactive<Record<string, string>>({
+  ip_whitelist_enabled: '0',
+  ip_whitelist_ips: '',
   app_name: '',
   ai_api_url: '',
   ai_api_key: '',
@@ -74,8 +76,16 @@ const minioForm = reactive({
   minio_use_ssl: '0',
 })
 
+// IP Whitelist state
+const ipWhitelistEnabled = ref(false)
+const ipWhitelistIPs = ref('')
+const savingWhitelist = ref(false)
+const myIP = ref('')
+const loadingMyIP = ref(false)
+
 const sidebarTabs = [
   { key: 'umum', label: 'Umum & Branding', icon: 'ti-settings' },
+  { key: 'ip-whitelist', label: 'IP Whitelist', icon: 'ti-shield-lock' },
   { key: 'ai', label: 'Konfigurasi AI', icon: 'ti-robot' },
   { key: 'backup', label: 'Backup & Restore', icon: 'ti-database' },
   { key: 'database', label: 'Manajemen Database', icon: 'ti-database-cog' },
@@ -90,6 +100,12 @@ async function fetchSettings() {
   try {
     const res = await settingApi.getAll()
     Object.assign(form, res.data.data)
+    // Sync IP whitelist state
+    ipWhitelistEnabled.value = res.data.data?.ip_whitelist_enabled === '1'
+    // Convert comma-separated to newline-separated for textarea display
+    const rawIPs = res.data.data?.ip_whitelist_ips || ''
+    ipWhitelistIPs.value = rawIPs.split(',').map((s: string) => s.trim()).filter(Boolean).join('\n')
+
     // Sync minio form from settings
     minioForm.minio_endpoint = res.data.data?.minio_endpoint || ''
     minioForm.minio_bucket = res.data.data?.minio_bucket || ''
@@ -337,6 +353,45 @@ async function handleBrandingUpload(event: Event, field: string) {
   }
 }
 
+async function handleSaveWhitelist() {
+  savingWhitelist.value = true
+  try {
+    // Convert newline-separated to comma-separated for storage
+    const ips = ipWhitelistIPs.value.split('\n').map(s => s.trim()).filter(Boolean).join(',')
+    await settingApi.update({
+      ip_whitelist_enabled: ipWhitelistEnabled.value ? '1' : '0',
+      ip_whitelist_ips: ips,
+    })
+    toast.success('IP Whitelist berhasil disimpan')
+  } catch (e: any) {
+    toast.error(e?.response?.data?.message ?? 'Gagal menyimpan IP Whitelist')
+  } finally {
+    savingWhitelist.value = false
+  }
+}
+
+async function detectMyIP() {
+  loadingMyIP.value = true
+  try {
+    const res = await fetch('https://api.ipify.org?format=json')
+    const data = await res.json()
+    myIP.value = data.ip
+  } catch {
+    toast.error('Gagal mendeteksi IP')
+  } finally {
+    loadingMyIP.value = false
+  }
+}
+
+function addMyIP() {
+  if (!myIP.value) return
+  const current = ipWhitelistIPs.value.split('\n').map(s => s.trim()).filter(Boolean)
+  if (!current.includes(myIP.value)) {
+    current.push(myIP.value)
+    ipWhitelistIPs.value = current.join('\n')
+  }
+}
+
 onMounted(async () => {
   await fetchSettings()
   await fetchPanicModeStatus()
@@ -551,6 +606,87 @@ onMounted(async () => {
                   <input type="file" class="form-control form-control-sm" accept=".png,.jpg,.jpeg,.webp"
                     @change="handleBrandingUpload($event, 'login_bg_image')" :disabled="uploadingBranding" />
                   <div class="form-hint">JPG, PNG atau WebP. Max 2MB</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: IP Whitelist -->
+      <div v-if="activeTab === 'ip-whitelist'">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title"><i class="ti ti-shield-lock me-2"></i>IP Whitelist</h3>
+            <div class="card-options">
+              <BaseButton variant="primary" size="sm" :loading="savingWhitelist" @click="handleSaveWhitelist">
+                <i class="ti ti-device-floppy me-1"></i>Simpan
+              </BaseButton>
+            </div>
+          </div>
+          <div class="card-body d-flex flex-column gap-3">
+            <div class="alert alert-info mb-0">
+              <div class="d-flex align-items-start gap-2">
+                <i class="ti ti-info-circle fs-3 mt-1"></i>
+                <div>
+                  <div class="fw-bold">Tentang IP Whitelist</div>
+                  <div class="small">
+                    Jika diaktifkan, hanya perangkat dari IP yang terdaftar yang dapat mengakses ujian.
+                    Admin selalu diizinkan mengakses tanpa batasan IP.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-medium">Aktifkan IP Whitelist</div>
+                <div class="text-muted small">Blokir akses ujian dari IP yang tidak terdaftar</div>
+              </div>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" v-model="ipWhitelistEnabled" />
+              </div>
+            </div>
+
+            <div v-if="ipWhitelistEnabled">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <label class="form-label mb-0">Daftar IP / CIDR yang Diizinkan</label>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-sm btn-ghost-secondary" :disabled="loadingMyIP" @click="detectMyIP">
+                    <span v-if="loadingMyIP" class="spinner-border spinner-border-sm me-1"></span>
+                    <i v-else class="ti ti-world-search me-1"></i>Deteksi IP Saya
+                  </button>
+                  <button v-if="myIP" class="btn btn-sm btn-ghost-primary" @click="addMyIP">
+                    <i class="ti ti-plus me-1"></i>Tambah {{ myIP }}
+                  </button>
+                </div>
+              </div>
+              <textarea
+                v-model="ipWhitelistIPs"
+                class="form-control font-monospace"
+                rows="8"
+                placeholder="Masukkan satu IP/CIDR per baris, contoh:
+192.168.1.0/24
+10.0.0.1
+172.16.0.0/16
+203.0.113.50"
+              ></textarea>
+              <div class="form-hint mt-1">
+                Satu IP/CIDR per baris. Mendukung format: <code>192.168.1.1</code> (IP tunggal) atau <code>192.168.1.0/24</code> (CIDR range).
+              </div>
+
+              <div class="alert alert-warning mt-3 mb-0">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="ti ti-alert-triangle fs-3 mt-1"></i>
+                  <div>
+                    <div class="fw-bold">Perhatian</div>
+                    <ul class="small mb-0 ps-3">
+                      <li>Pastikan IP sekolah/lab komputer sudah terdaftar sebelum mengaktifkan</li>
+                      <li>Admin selalu bisa mengakses tanpa batasan IP</li>
+                      <li>Perubahan berlaku dalam 2 menit (cache TTL)</li>
+                      <li>IP whitelist hanya mempengaruhi akses ujian peserta</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@
 import { ref, reactive, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
-import { getIllustration } from '@/utils/avatar'
+
 import { getErrorMessage } from '@/utils/apiError'
 import { authApi } from '@/api/auth.api'
 import BaseModal from '@/components/ui/BaseModal.vue'
@@ -130,7 +130,7 @@ async function handleForceLogin() {
       <div class="row align-items-center justify-content-center">
         <!-- Illustration: left side, large screens only -->
         <div class="col-lg-6 d-none d-lg-flex justify-content-center align-items-center">
-          <img :src="getIllustration('welcome-on-board')" class="img-fluid" style="max-height:400px" alt="">
+          <i class="ti ti-school text-primary" style="font-size:8rem"></i>
         </div>
 
         <!-- Login form: right side -->

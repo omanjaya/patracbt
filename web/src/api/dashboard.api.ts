@@ -77,6 +77,16 @@ export interface PengawasActiveRoom {
   status: string
 }
 
+export interface AdminAlert {
+  type: string
+  title: string
+  message: string
+  count: number
+  link: string
+  icon: string
+  color: string
+}
+
 export interface ServerStats {
   cpu_percent: number
   ram_percent: number
@@ -127,4 +137,6 @@ export const dashboardApi = {
     client.get<{ success: boolean; data: ServerStats }>('/admin/dashboard/server-stats'),
   getOngoingExams: () =>
     client.get<{ success: boolean; data: OngoingExam[] }>('/admin/dashboard/ongoing-exams'),
+  getAdminAlerts: () =>
+    client.get<{ success: boolean; data: AdminAlert[] }>('/admin/dashboard/alerts'),
 }

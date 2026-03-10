@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { dashboardApi, type PengawasActiveRoom } from '../../../api/dashboard.api'
-import { getIllustration } from '../../../utils/avatar'
+
 import { useToastStore } from '@/stores/toast.store'
 import BasePageHeader from '@/components/ui/BasePageHeader.vue'
 
@@ -102,7 +102,7 @@ onUnmounted(() => {
 
   <!-- Empty state -->
   <div v-else-if="!rooms.length" class="text-center py-5">
-    <img :src="getIllustration('hybrid-work')" class="img-fluid mb-3 opacity-75" style="max-height:160px" alt="">
+    <i class="ti ti-eye-off fs-1 mb-2 d-block opacity-50"></i>
     <h3 class="text-muted">Tidak Ada Ujian Aktif</h3>
     <p class="text-muted">Ruang ujian yang sedang berlangsung akan muncul di sini.</p>
     <button class="btn btn-outline-primary mt-2" @click="router.push('/pengawas')">

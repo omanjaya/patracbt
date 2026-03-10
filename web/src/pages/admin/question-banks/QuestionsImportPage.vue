@@ -166,6 +166,57 @@ function showCopied() {
   setTimeout(() => { copied.value = false }, 2000)
 }
 
+/** Clean Word/MSO HTML from clipboard paste */
+function cleanWordHTML(html: string): string {
+  let s = html
+  // Remove HTML comments
+  s = s.replace(/<!--[\s\S]*?-->/g, '')
+  // Remove <style> blocks
+  s = s.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+  // Remove mso-* CSS properties
+  s = s.replace(/\s*mso-[^;:"]+:[^;:"]+;?/gi, '')
+  // Remove class="Mso*" attributes
+  s = s.replace(/\s+class="Mso[^"]*"/gi, '')
+  // Remove empty style attributes
+  s = s.replace(/\s+style="\s*"/gi, '')
+  // Remove empty spans and divs
+  s = s.replace(/<span[^>]*>\s*<\/span>/gi, '')
+  s = s.replace(/<div[^>]*>\s*<\/div>/gi, '')
+  // Normalize <br> to newline
+  s = s.replace(/<br\s*\/?>/gi, '\n')
+  // Convert </p> to newline, remove <p>
+  s = s.replace(/<p[^>]*>/gi, '')
+  s = s.replace(/<\/p>/gi, '\n')
+  // Remove remaining HTML tags
+  s = s.replace(/<[^>]+>/g, '')
+  // Decode HTML entities
+  s = s.replace(/&nbsp;/g, ' ')
+  s = s.replace(/&amp;/g, '&')
+  s = s.replace(/&lt;/g, '<')
+  s = s.replace(/&gt;/g, '>')
+  s = s.replace(/&quot;/g, '"')
+  // Collapse excessive whitespace on lines
+  s = s.replace(/[ \t]+/g, ' ')
+  // Collapse 3+ newlines to 2
+  s = s.replace(/\n{3,}/g, '\n\n')
+  return s.trim()
+}
+
+function onPaste(e: ClipboardEvent) {
+  const html = e.clipboardData?.getData('text/html')
+  if (html && html.includes('mso-') || html && html.includes('MsoNormal')) {
+    e.preventDefault()
+    const cleaned = cleanWordHTML(html)
+    // Insert at cursor or replace selection
+    const textarea = e.target as HTMLTextAreaElement
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const before = content.value.substring(0, start)
+    const after = content.value.substring(end)
+    content.value = before + cleaned + after
+  }
+}
+
 onMounted(() => {
   fetchBank()
   // Load AI-generated content from sessionStorage if available
@@ -228,9 +279,10 @@ onMounted(() => {
               class="form-control flex-grow-1"
               :class="{ 'is-invalid': formErrors.content }"
               rows="18"
-              placeholder="Tempel teks soal di sini. Gunakan format template yang tersedia di panel kanan..."
+              placeholder="Tempel teks soal di sini. Gunakan format template yang tersedia di panel kanan. Mendukung paste dari Microsoft Word."
               @blur="validateImportField('content')"
               @input="formErrors.content = ''"
+              @paste="onPaste"
             ></textarea>
             <div v-if="formErrors.content" class="invalid-feedback">{{ formErrors.content }}</div>
             <div class="form-hint mt-2">

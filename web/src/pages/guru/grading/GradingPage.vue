@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { reportApi, type ScheduleReport, type SessionRow } from '../../../api/report.api'
 import { examApi, type ExamSchedule } from '../../../api/exam.api'
-import { getIllustration } from '../../../utils/avatar'
+
 import BasePageHeader from '@/components/ui/BasePageHeader.vue'
 
 const route = useRoute()
@@ -99,7 +99,7 @@ onMounted(load)
         <tbody>
           <tr v-if="!report?.sessions?.length">
             <td colspan="7" class="text-center py-5">
-              <img :src="getIllustration('good-news')" class="img-fluid mb-3 d-block mx-auto" style="max-height:120px" alt="">
+              <i class="ti ti-certificate-off fs-1 mb-2 d-block opacity-50"></i>
               <div class="text-muted">Belum ada siswa yang mengerjakan ujian ini.</div>
             </td>
           </tr>

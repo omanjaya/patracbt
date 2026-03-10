@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getAvatarUrl } from '../../../utils/avatar'
 import { examApi, type ExamSchedule, type ExamSession } from '../../../api/exam.api'
 import { supervisionApi } from '../../../api/supervision.api'
 import { useWebSocket } from '../../../composables/useWebSocket'
@@ -199,7 +198,9 @@ async function copyToken(scheduleId: number, tok: string) {
     setTimeout(() => {
       tokenCopied.value = { ...tokenCopied.value, [scheduleId]: false }
     }, 2000)
-  } catch {}
+  } catch {
+    console.warn('Clipboard not available')
+  }
 }
 
 async function regenerateToken(scheduleId: number) {
@@ -259,7 +260,9 @@ async function loadSessionsForSchedule(schedule: ExamSchedule) {
       })
     }
     students.value = new Map(students.value)
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to load sessions for schedule:', e)
+  }
 }
 
 function studentKey(userId: number, scheduleId: number) {
@@ -852,10 +855,8 @@ onUnmounted(disconnectAll)
             </div>
             <!-- Avatar + Name -->
             <div class="col-auto">
-              <span
-                class="avatar"
-                :style="`background-image: url(${getAvatarUrl(s.user_id)})`"
-              >
+              <span class="avatar">
+                {{ s.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() }}
                 <span
                   class="badge"
                   :class="statusDotClass(s.status)"
@@ -960,10 +961,7 @@ onUnmounted(disconnectAll)
               :class="statusDotClass(s.status)"
             ></div>
             <div class="card-body pt-3 pb-1">
-              <div
-                class="avatar avatar-md rounded-circle mx-auto mb-2"
-                :style="`background-image:url(${getAvatarUrl(s.user_id)})`"
-              ></div>
+              <div class="avatar avatar-md rounded-circle mx-auto mb-2">{{ s.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() }}</div>
               <p class="fw-medium mb-0 small text-truncate">{{ s.name }}</p>
               <span class="badge mt-1" :class="statusBadgeClass(s.status)">{{ statusLabel(s.status) }}</span>
               <div v-if="s.violation_count > 0" class="mt-1">
@@ -1193,7 +1191,7 @@ onUnmounted(disconnectAll)
               class="list-group-item"
             >
               <div class="d-flex align-items-center gap-2">
-                <span class="avatar avatar-sm" :style="`background-image:url(${getAvatarUrl(s.user_id)})`"></span>
+                <span class="avatar avatar-sm">{{ s.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() }}</span>
                 <div>
                   <div class="fw-medium">{{ s.name }}</div>
                   <div class="text-muted small">

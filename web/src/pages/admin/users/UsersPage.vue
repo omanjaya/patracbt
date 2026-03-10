@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { getAvatarUrl } from '../../../utils/avatar'
 import BaseTable from '../../../components/ui/BaseTable.vue'
 import BaseModal from '../../../components/ui/BaseModal.vue'
 import BasePagination from '../../../components/ui/BasePagination.vue'
@@ -294,6 +293,38 @@ async function downloadTemplate() {
   }
 }
 
+// --- Import Excel ---
+const showImportModal = ref(false)
+const importFile = ref<File | null>(null)
+const importing = ref(false)
+const importResult = ref<{ created?: number; skipped?: number; errors?: { row: number; column: string; message: string }[] } | null>(null)
+
+function onImportFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  importFile.value = input.files?.[0] ?? null
+  importResult.value = null
+}
+
+async function handleImport() {
+  if (!importFile.value) return
+  importing.value = true
+  importResult.value = null
+  try {
+    const fd = new FormData()
+    fd.append('file', importFile.value)
+    const res = await client.post('/admin/users/import', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    importResult.value = res.data.data
+    if (res.data.data?.created > 0) {
+      toast.success(`${res.data.data.created} user berhasil diimport`)
+      fetchList()
+    }
+  } catch (e: any) {
+    toast.error(e.response?.data?.message ?? 'Gagal import user')
+  } finally {
+    importing.value = false
+  }
+}
+
 onMounted(fetchList)
 </script>
 
@@ -307,6 +338,9 @@ onMounted(fetchList)
         <button class="btn btn-outline-secondary" v-if="activeTab === 'active'" @click="downloadTemplate" :disabled="downloadingTpl">
           <span v-if="downloadingTpl" class="spinner-border spinner-border-sm me-1"></span>
           <i v-else class="ti ti-download me-1"></i>Template CSV
+        </button>
+        <button class="btn btn-outline-primary" v-if="activeTab === 'active'" @click="showImportModal = true; importFile = null; importResult = null">
+          <i class="ti ti-file-import me-1"></i>Import Excel
         </button>
         <button class="btn btn-primary" v-if="activeTab === 'active'" @click="openCreate"><i class="ti ti-plus"></i>
           Tambah User</button>
@@ -371,7 +405,7 @@ onMounted(fetchList)
             </td>
             <td>
               <div class="d-flex align-items-center gap-2">
-                <span class="avatar avatar-sm rounded-circle" :style="`background-image:url(${getAvatarUrl(item.id)})`"></span>
+                <span class="avatar avatar-sm rounded-circle">{{ item.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() }}</span>
                 <div>
                   <p class="fw-medium">{{ item.name }}</p>
                   <p class="text-muted small">{{ item.email ?? '' }}</p>
@@ -406,7 +440,7 @@ onMounted(fetchList)
             </td>
             <td>
               <div class="d-flex align-items-center gap-2">
-                <span class="avatar avatar-sm rounded-circle" :style="`background-image:url(${getAvatarUrl(item.id)})`"></span>
+                <span class="avatar avatar-sm rounded-circle">{{ item.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() }}</span>
                 <p class="fw-medium">{{ item.name }}</p>
               </div>
             </td>
@@ -495,5 +529,43 @@ onMounted(fetchList)
       @close="confirmModal.close"
       :loading="confirmModal.loading.value"
     />
+
+    <!-- Import Excel Modal -->
+    <BaseModal v-if="showImportModal" title="Import User dari Excel" @close="showImportModal = false">
+      <div class="d-flex flex-column gap-3">
+        <div class="alert alert-info mb-0">
+          <div class="d-flex gap-2">
+            <i class="ti ti-info-circle flex-shrink-0 mt-1"></i>
+            <div>
+              <p class="mb-1">Format kolom: <strong>name, username, password, role, email, nis, nip, class, major, phone, rombel</strong></p>
+              <p class="mb-0 small text-muted">Kolom <strong>rombel</strong> (K) bersifat opsional — jika diisi, siswa otomatis masuk ke rombel tersebut. Jika rombel belum ada, akan dibuat otomatis.</p>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Pilih File Excel (.xlsx)</label>
+          <input type="file" accept=".xlsx,.xls,.csv" class="form-control" @change="onImportFileChange" />
+        </div>
+        <!-- Import Result -->
+        <div v-if="importResult" class="alert mb-0" :class="importResult.errors?.length ? 'alert-warning' : 'alert-success'">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i :class="importResult.errors?.length ? 'ti ti-alert-triangle' : 'ti ti-check'"></i>
+            <strong>{{ importResult.created ?? 0 }} berhasil, {{ importResult.skipped ?? 0 }} dilewati</strong>
+          </div>
+          <div v-if="importResult.errors?.length" class="mt-2" style="max-height: 200px; overflow-y: auto;">
+            <div v-for="(err, i) in importResult.errors" :key="i" class="small text-muted">
+              Baris {{ err.row }}<template v-if="err.column !== '-'"> ({{ err.column }})</template>: {{ err.message }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button class="btn btn-secondary" @click="showImportModal = false">Tutup</button>
+        <button class="btn btn-primary" :disabled="importing || !importFile" @click="handleImport">
+          <span v-if="importing" class="spinner-border spinner-border-sm me-1"></span>
+          <i v-else class="ti ti-upload me-1"></i>Import
+        </button>
+      </template>
+    </BaseModal>
 </template>
 

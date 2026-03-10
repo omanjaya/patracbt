@@ -5,7 +5,7 @@ import BaseModal from '../../../components/ui/BaseModal.vue'
 import BasePagination from '../../../components/ui/BasePagination.vue'
 import BaseConfirmModal from '@/components/ui/BaseConfirmModal.vue'
 import { useRouter } from 'vue-router'
-import { getIllustration } from '../../../utils/avatar'
+
 import { questionBankApi, type QuestionBank } from '../../../api/question_bank.api'
 import { subjectApi } from '../../../api/subject.api'
 import { useToastStore } from '../../../stores/toast.store'
@@ -68,7 +68,9 @@ async function fetchSubjects() {
   try {
     const res = await subjectApi.listAll()
     subjects.value = res.data.data ?? []
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to load subjects:', e)
+  }
 }
 
 function openCreate() {
@@ -193,7 +195,7 @@ onMounted(() => { fetchList(); fetchSubjects() })
 
       <BaseTable :columns="columns" :loading="loading" :row-count="list.length" empty="Belum ada bank soal">
         <template #empty>
-          <img :src="getIllustration('folders')" class="img-fluid mb-3 opacity-75" style="max-height:120px" alt="">
+          <i class="ti ti-book-off fs-1 mb-2 d-block opacity-50"></i>
           <p class="mb-0">Belum ada bank soal</p>
         </template>
         <template #default>

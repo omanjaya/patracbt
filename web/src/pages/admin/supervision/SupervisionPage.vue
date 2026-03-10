@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
-import { getAvatarUrl, getIllustration } from '../../../utils/avatar'
+
 import { examApi, type ExamSchedule, type ExamSession } from '../../../api/exam.api'
 import { supervisionApi } from '../../../api/supervision.api'
 import { useWebSocket } from '../../../composables/useWebSocket'
@@ -635,7 +635,7 @@ onUnmounted(disconnectWS)
       <div v-if="loading" class="text-center text-muted py-4">Memuat data peserta...</div>
       <div v-else-if="studentList.length === 0">
         <div class="text-center py-5">
-          <img :src="getIllustration('searching-for-a-signal')" class="img-fluid mb-3 opacity-75" style="max-height:160px" alt="">
+          <i class="ti ti-eye-off fs-1 mb-2 d-block opacity-50"></i>
           <p class="text-muted">Belum ada peserta yang terhubung</p>
         </div>
       </div>
@@ -655,9 +655,7 @@ onUnmounted(disconnectWS)
           <div class="avatar avatar-xs rounded-circle position-absolute top-0 start-0 mt-2 ms-2" :class="statusBgClass(s.status)"></div>
 
           <!-- Avatar -->
-          <div class="avatar avatar-md rounded-circle mx-auto mb-2"
-            :style="`background-image:url(${getAvatarUrl(s.user_id)})`">
-          </div>
+          <div class="avatar avatar-md rounded-circle mx-auto mb-2">{{ s.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() }}</div>
 
           <!-- Info -->
           <div class="card-body pt-0 text-center">
@@ -771,7 +769,7 @@ onUnmounted(disconnectWS)
                 </td>
                 <td>
                   <div class="d-flex align-items-center gap-2">
-                    <span class="avatar avatar-sm rounded-circle" :style="`background-image:url(${getAvatarUrl(s.user_id)})`"></span>
+                    <span class="avatar avatar-sm rounded-circle">{{ s.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() }}</span>
                     <span class="fw-medium">{{ s.name }}</span>
                   </div>
                 </td>
@@ -871,7 +869,7 @@ onUnmounted(disconnectWS)
     <!-- Empty state -->
     <div v-else>
       <div class="text-center py-5">
-        <img :src="getIllustration('searching-for-a-signal')" class="img-fluid mb-3 opacity-75" style="max-height:160px" alt="">
+        <i class="ti ti-eye-off fs-1 mb-2 d-block opacity-50"></i>
         <p class="text-muted">Pilih jadwal ujian untuk memulai pengawasan</p>
       </div>
     </div>

@@ -71,7 +71,9 @@ async function loadSchedules() {
   try {
     const res = await examApi.listSchedules({ per_page: 100 })
     schedules.value = res.data.data ?? []
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to load schedules:', e)
+  }
 }
 
 async function fetchLedger() {

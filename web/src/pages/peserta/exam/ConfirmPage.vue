@@ -2,7 +2,6 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { examApi, type ExamSchedule } from '../../../api/exam.api'
-import { getIllustration } from '../../../utils/avatar'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,7 +99,7 @@ onMounted(fetchSchedule)
 
         <div class="card-body">
           <div class="text-center">
-            <img :src="getIllustration('boy-and-laptop')" class="img-fluid mb-3" style="max-height:120px" alt="">
+            <i class="ti ti-clipboard-check text-blue" style="font-size:3rem"></i>
           </div>
           <!-- Info grid -->
           <div class="row g-2 mb-3">

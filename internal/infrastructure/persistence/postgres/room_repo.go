@@ -65,6 +65,10 @@ func (r *RoomRepo) AssignUsers(roomID uint, userIDs []uint) error {
 	if len(userIDs) == 0 {
 		return nil
 	}
+	// Ensure user_profiles rows exist for all users, then update room_id
+	for _, uid := range userIDs {
+		r.db.FirstOrCreate(&entity.UserProfile{}, entity.UserProfile{UserID: uid})
+	}
 	return r.db.Model(&entity.UserProfile{}).
 		Where("user_id IN ?", userIDs).
 		Update("room_id", roomID).Error

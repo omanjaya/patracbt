@@ -206,6 +206,8 @@ func (m *mockQuestionRepo) FindStimulusByID(_ uint) (*entity.Stimulus, error) { 
 func (m *mockQuestionRepo) ListStimuliByBank(_ uint) ([]*entity.Stimulus, error) { return nil, nil }
 func (m *mockQuestionRepo) UpdateStimulus(_ *entity.Stimulus) error { return nil }
 func (m *mockQuestionRepo) DeleteStimulus(_ uint) error             { return nil }
+func (m *mockQuestionRepo) ListAllByBank(_ uint) ([]*entity.Question, error) { return nil, nil }
+func (m *mockQuestionRepo) ListIDsByBank(_ uint, _ string) ([]uint, error)   { return nil, nil }
 
 var _ repository.QuestionRepository = (*mockQuestionRepo)(nil)
 

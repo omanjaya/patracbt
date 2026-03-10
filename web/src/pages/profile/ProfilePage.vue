@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import client from '../../api/client'
-import { getAvatarUrl } from '../../utils/avatar'
 import BaseModal from '../../components/ui/BaseModal.vue'
 import BaseInput from '../../components/ui/BaseInput.vue'
 import BaseButton from '../../components/ui/BaseButton.vue'
@@ -112,7 +111,11 @@ const currentRoomName = computed(() => {
 const currentAvatarUrl = computed(() => {
   if (avatarPreview.value) return avatarPreview.value
   if (user.value?.avatar_path) return user.value.avatar_path
-  return getAvatarUrl(user.value?.id ?? 0)
+  return null
+})
+
+const userInitials = computed(() => {
+  return (user.value?.name ?? '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
 })
 
 function triggerAvatarUpload() {
@@ -414,7 +417,7 @@ onMounted(async () => {
         <div class="card-body text-center py-4">
           <div
             class="avatar avatar-xl rounded-circle mb-3 d-block mx-auto position-relative"
-            :style="`background-image:url(${currentAvatarUrl}); cursor:pointer;`"
+            :style="currentAvatarUrl ? `background-image:url(${currentAvatarUrl}); cursor:pointer;` : 'cursor:pointer;'"
             role="button"
             tabindex="0"
             aria-label="Ganti foto profil"
@@ -422,7 +425,7 @@ onMounted(async () => {
             @click="triggerAvatarUpload"
             @keydown.enter.prevent="triggerAvatarUpload"
             @keydown.space.prevent="triggerAvatarUpload"
-          >
+          >{{ !currentAvatarUrl ? userInitials : '' }}
             <span
               v-if="uploadingAvatar"
               class="position-absolute top-50 start-50 translate-middle"

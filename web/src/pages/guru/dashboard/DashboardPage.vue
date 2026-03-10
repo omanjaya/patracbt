@@ -10,7 +10,7 @@ import {
   type GuruOngoingExam,
   type GuruAlert,
 } from '../../../api/dashboard.api'
-import { getAvatarUrl, getIllustration } from '../../../utils/avatar'
+
 import BasePageHeader from '@/components/ui/BasePageHeader.vue'
 
 const authStore = useAuthStore()
@@ -109,7 +109,7 @@ function alertColor(type: string) {
     <div class="card-body">
       <div class="row align-items-center">
         <div class="col-auto">
-          <span class="avatar avatar-xl rounded-circle" :style="{ backgroundImage: authStore.user?.avatar_url ? `url(${authStore.user.avatar_url})` : `url(${getAvatarUrl(authStore.user?.id ?? 0)})` }"></span>
+          <span class="avatar avatar-xl rounded-circle" :style="authStore.user?.avatar_url ? { backgroundImage: `url(${authStore.user.avatar_url})` } : {}">{{ !authStore.user?.avatar_url ? (authStore.user?.name ?? '').split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() : '' }}</span>
         </div>
         <div class="col">
           <h2 class="mb-1">{{ greeting }}, {{ authStore.user?.name }}!</h2>
@@ -126,7 +126,7 @@ function alertColor(type: string) {
           </p>
         </div>
         <div class="col-auto d-none d-md-block">
-          <img :src="getIllustration('graduation')" class="img-fluid opacity-75" style="max-height:90px" alt="">
+          <i class="ti ti-school fs-1 opacity-50"></i>
         </div>
       </div>
     </div>
@@ -297,7 +297,7 @@ function alertColor(type: string) {
           </h3>
         </div>
         <div v-if="!upcomingExams.length" class="card-body text-center text-muted py-4">
-          <img :src="getIllustration('calendar')" class="img-fluid mb-3 opacity-75" style="max-height:100px" alt="">
+          <i class="ti ti-calendar-off fs-1 mb-2 d-block opacity-50"></i>
           <p class="mb-0">Tidak ada ujian mendatang</p>
         </div>
         <ul v-else class="list-group list-group-flush">
@@ -326,7 +326,7 @@ function alertColor(type: string) {
           </h3>
         </div>
         <div v-if="!recentActivity.length" class="card-body text-center text-muted py-4">
-          <img :src="getIllustration('hybrid-work')" class="img-fluid mb-3 opacity-75" style="max-height:100px" alt="">
+          <i class="ti ti-activity fs-1 mb-2 d-block opacity-50"></i>
           <p class="mb-0">Belum ada aktivitas</p>
         </div>
         <ul v-else class="list-group list-group-flush">

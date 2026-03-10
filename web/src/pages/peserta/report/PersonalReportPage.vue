@@ -98,7 +98,9 @@ function parsePGOptions(ans: AnswerDetail): { key: string; text: string }[] {
     if (typeof ans.options === 'object' && ans.options !== null) {
       return Object.entries(ans.options as Record<string, string>).map(([k, v]) => ({ key: k, text: v }))
     }
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to parse PG options:', e)
+  }
   return []
 }
 
@@ -131,7 +133,8 @@ function parseMatchingPairs(ans: AnswerDetail): { left: string; right: string; u
       userRight: user?.[left] ?? '-',
       isCorrect: user?.[left] === right,
     }))
-  } catch {
+  } catch (e) {
+    console.warn('Failed to parse matching pairs:', e)
     return []
   }
 }
@@ -140,7 +143,9 @@ function parseIsianAccepted(ans: AnswerDetail): string[] {
   try {
     if (Array.isArray(ans.correct_answer)) return ans.correct_answer as string[]
     if (typeof ans.correct_answer === 'string') return [ans.correct_answer]
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to parse isian accepted answers:', e)
+  }
   return []
 }
 

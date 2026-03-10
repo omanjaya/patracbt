@@ -89,7 +89,15 @@ export const questionBankApi = {
     client.post('/questions/bulk-action', { action, ids, target_bank_id: targetBankId }),
 
   importQuestions: (bankId: number, data: { content: string }) =>
-    client.post(`/question-banks/${bankId}/import`, data),
+    client.post(`/question-banks/${bankId}/import/text`, data),
+
+  importQuestionsExcel: (bankId: number, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return client.post(`/question-banks/${bankId}/import`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 
   reorderQuestions: (bankId: number, items: { id: number; order_index: number }[]) =>
     client.patch(`/question-banks/${bankId}/questions/reorder`, { items }),

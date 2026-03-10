@@ -19,10 +19,15 @@ var (
 type UserUseCase struct {
 	repo        repository.UserRepository
 	sessionRepo repository.ExamSessionRepository
+	rombelRepo  repository.RombelRepository
 }
 
-func NewUserUseCase(repo repository.UserRepository, sessionRepo repository.ExamSessionRepository) *UserUseCase {
-	return &UserUseCase{repo: repo, sessionRepo: sessionRepo}
+func NewUserUseCase(repo repository.UserRepository, sessionRepo repository.ExamSessionRepository, rombelRepo ...repository.RombelRepository) *UserUseCase {
+	uc := &UserUseCase{repo: repo, sessionRepo: sessionRepo}
+	if len(rombelRepo) > 0 {
+		uc.rombelRepo = rombelRepo[0]
+	}
+	return uc
 }
 
 func (uc *UserUseCase) List(filter repository.UserListFilter, p pagination.Params) ([]*entity.User, int64, error) {
@@ -141,5 +146,8 @@ func (uc *UserUseCase) BulkForceDelete(ids []uint) error {
 }
 
 func (uc *UserUseCase) ImportExcel(data []byte) (*ImportResult, error) {
+	if uc.rombelRepo != nil {
+		return ImportUsersFromExcel(data, uc.repo, uc.rombelRepo)
+	}
 	return ImportUsersFromExcel(data, uc.repo)
 }

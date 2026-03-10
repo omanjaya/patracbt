@@ -87,7 +87,9 @@ async function loadAllPermissions() {
     const res = await client.get('/admin/permissions/all')
     allPermissions.value = res.data.data ?? []
     permissionGroups.value = res.data.data ?? []
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to load permissions:', e)
+  }
 }
 
 async function fetchList() {

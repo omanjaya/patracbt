@@ -86,6 +86,35 @@ func (h *QuestionImportHandler) Import(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// POST /question-banks/:bankId/import/text — import from copy-pasted text (including Word)
+func (h *QuestionImportHandler) ImportText(c *gin.Context) {
+	bankID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || bankID == 0 {
+		response.BadRequest(c, "bank id tidak valid")
+		return
+	}
+
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ValidationError(c, "Konten soal wajib diisi")
+		return
+	}
+	if strings.TrimSpace(req.Content) == "" {
+		response.BadRequest(c, "Konten soal tidak boleh kosong")
+		return
+	}
+
+	result, err := questionuc.ImportQuestionsFromText(req.Content, uint(bankID), h.questionRepo, h.questionRepo)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.Success(c, result)
+}
+
 // GET /question-banks/:id/import/template
 func (h *QuestionImportHandler) DownloadTemplate(c *gin.Context) {
 	csvContent := "type,body,option_a,option_b,option_c,option_d,option_e,correct_answer,score,difficulty,explanation\r\n" +
