@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -135,15 +136,60 @@ func (h *DatabaseHandler) ImportDatabase(c *gin.Context) {
 	}
 	tmpFile.Close()
 
-	// Run pg_restore
-	args := append([]string{"--clean", "--if-exists"}, h.buildConnArgs()...)
-	args = append(args, tmpPath)
-	cmd := exec.Command("pg_restore", args...)
+	// For .gz files, decompress first then detect inner format
+	actualPath := tmpPath
+	actualExt := ext
+	if ext == ".gz" {
+		gzFile, err := os.Open(tmpPath)
+		if err != nil {
+			response.InternalError(c, "Gagal membuka file gz")
+			return
+		}
+		gr, err := gzip.NewReader(gzFile)
+		if err != nil {
+			gzFile.Close()
+			response.Error(c, http.StatusBadRequest, "BAD_REQUEST", "File .gz tidak valid")
+			return
+		}
+		innerName := strings.TrimSuffix(header.Filename, ".gz")
+		actualExt = strings.ToLower(filepath.Ext(innerName))
+		decompFile, err := os.CreateTemp("", "patra_import_decomp_*"+actualExt)
+		if err != nil {
+			gr.Close()
+			gzFile.Close()
+			response.InternalError(c, "Gagal membuat file sementara")
+			return
+		}
+		actualPath = decompFile.Name()
+		defer os.Remove(actualPath)
+		if _, err := io.Copy(decompFile, gr); err != nil {
+			decompFile.Close()
+			gr.Close()
+			gzFile.Close()
+			response.InternalError(c, "Gagal decompress file gz")
+			return
+		}
+		decompFile.Close()
+		gr.Close()
+		gzFile.Close()
+	}
+
+	// Use psql for plain SQL files, pg_restore for binary dumps
+	var cmd *exec.Cmd
+	if actualExt == ".sql" || actualExt == ".patrabak" || actualExt == "" {
+		args := h.buildConnArgs()
+		args = append(args, "-f", actualPath)
+		cmd = exec.Command("psql", args...)
+	} else {
+		args := append([]string{"--clean", "--if-exists"}, h.buildConnArgs()...)
+		args = append(args, actualPath)
+		cmd = exec.Command("pg_restore", args...)
+	}
 	cmd.Env = h.buildPgEnv()
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logger.Log.Errorf("Database import: pg_restore failed: %v, output: %s", err, string(output))
+		logger.Log.Errorf("Database import: failed: %v, output: %s", err, string(output))
 		response.InternalError(c, "Import database gagal. Silakan periksa format file backup.")
 		return
 	}
